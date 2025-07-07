@@ -16,7 +16,13 @@ app.use('/api/departements', require('./ElectionAdminPanel/routes/departements')
 app.use('/api/electeurs', require('./ElectionAdminPanel/routes/electeurs'));
 app.use('/api/superviseurs', require('./ElectionAdminPanel/routes/superviseurs'));
 app.use('/api/candidats', require('./ElectionAdminPanel/routes/candidats'));
+app.use('/api/login', require('./ElectionAdminPanel/routes/login'));
+app.use('/api/register', require('./ElectionAdminPanel/routes/register.js'));
+// app.use('/api/login', require('./ElectionAdminPanel/routes/login.js'));
+// app.use('/api/login', require('./ElecteurPanel/routes/login.js'));
+
 // app.use('/api/PostulerCandidat', require('./ElecteurPanel/routes/PostulerCandidat'));
+// app.use('/api/login', require('./ElecteurPanel/routes/login.js'));
 
 
 const db = mysql.createConnection({
