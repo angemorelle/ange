@@ -18,6 +18,7 @@ app.use('/api/superviseurs', require('./ElectionAdminPanel/routes/superviseurs')
 app.use('/api/candidats', require('./ElectionAdminPanel/routes/candidats'));
 app.use('/api/login', require('./ElectionAdminPanel/routes/login'));
 app.use('/api/register', require('./ElectionAdminPanel/routes/register.js'));
+app.use('/api/bulletins ', require('./ElectionAdminPanel/routes/bulletins.js'));
 // app.use('/api/login', require('./ElectionAdminPanel/routes/login.js'));
 // app.use('/api/login', require('./ElecteurPanel/routes/login.js'));
 

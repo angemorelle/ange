@@ -1,3 +1,4 @@
+import 'bootstrap/dist/css/bootstrap.min.css';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -32,7 +33,9 @@ const CandidatList = () => {
 
   const ajouterCandidat = async () => {
     const { electeur_id, elections_id, programme } = form;
-    if (!electeur_id || !elections_id) return alert("Tous les champs sont obligatoires");
+    if (!electeur_id || !elections_id) {
+      return alert("Tous les champs sont obligatoires");
+    }
 
     try {
       await axios.post('http://localhost:3001/api/candidats', form);
@@ -51,77 +54,112 @@ const CandidatList = () => {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Gestion des Candidats</h2>
+    <div className="d-flex flex-column min-vh-100" style={{ backgroundColor: "#f8f9fa" }}>
+      {/* Header */}
+      <header>
+        <nav className="navbar navbar-expand-lg" style={{ backgroundColor: "#6c9eff" }}>
+          <div className="container justify-content-center">
+            <span className="navbar-brand text-white fs-3 fw-bold">Election</span>
+          </div>
+        </nav>
+      </header>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <select
-          value={form.electeur_id}
-          onChange={e => setForm({ ...form, electeur_id: e.target.value })}
-          className="border px-3 py-2 rounded"
-        >
-          <option value="">-- Candidat --</option>
-          {electeurs.map(e => (
-            <option key={e.id} value={e.id}>{e.nom}</option>
-          ))}
-        </select>
-        <select
-          value={form.elections_id}
-          onChange={e => setForm({ ...form, elections_id: e.target.value })}
-          className="border px-3 py-2 rounded"
-        >
-          <option value="">-- Élection --</option>
-          {elections.map(el => (
-            <option key={el.id} value={el.id}>{el.nom}</option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Programme"
-          value={form.programme}
-          onChange={e => setForm({ ...form, programme: e.target.value })}
-          className="border px-3 py-2 rounded"
-        />
-        <button
-          onClick={ajouterCandidat}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded col-span-3"
-        >
-          Ajouter
-        </button>
-      </div>
+      {/* Main */}
+      <main className="flex-fill">
+        <div className="container mt-5">
+          <h2 className="mb-4 text-center fw-bold">Gestion des Candidats</h2>
 
-      <table className="w-full border-collapse border border-gray-300">
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="p-2 border">Candidat</th>
-            <th className="p-2 border">Élection</th>
-            <th className="p-2 border">Programme</th>
-            <th className="p-2 border">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {candidats.map(c => (
-            <tr key={c.id} className="hover:bg-gray-100">
-              <td className="p-2 border">{c.electeur_nom}</td>
-              <td className="p-2 border">{c.election_nom}</td>
-              <td className="p-2 border">{c.programme}</td>
-              <td className="p-2 border">
-                <button
-                  onClick={() => supprimerCandidat(c.id)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+          {/* Formulaire */}
+          <div className="card p-4 mb-5 shadow">
+            <div className="row g-3">
+              <div className="col-md-4">
+                <select
+                  className="form-select"
+                  value={form.electeur_id}
+                  onChange={e => setForm({ ...form, electeur_id: e.target.value })}
                 >
-                  Supprimer
+                  <option value="">-- Candidat --</option>
+                  {electeurs.map(e => (
+                    <option key={e.id} value={e.id}>{e.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-4">
+                <select
+                  className="form-select"
+                  value={form.elections_id}
+                  onChange={e => setForm({ ...form, elections_id: e.target.value })}
+                >
+                  <option value="">-- Élection --</option>
+                  {elections.map(el => (
+                    <option key={el.id} value={el.id}>{el.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-4">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Programme"
+                  value={form.programme}
+                  onChange={e => setForm({ ...form, programme: e.target.value })}
+                />
+              </div>
+              <div className="col-12 text-end">
+                <button className="btn btn-success" onClick={ajouterCandidat}>
+                  Ajouter
                 </button>
-              </td>
-            </tr>
-          ))}
-          {candidats.length === 0 && (
-            <tr>
-              <td colSpan="4" className="text-center py-4 text-gray-500">Aucun candidat.</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Tableau */}
+          <div className="card shadow">
+            <div className="table-responsive">
+              <table className="table table-bordered table-striped mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Candidat</th>
+                    <th>Élection</th>
+                    <th>Programme</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {candidats.length > 0 ? candidats.map(c => (
+                    <tr key={c.id}>
+                      <td>{c.electeur_nom}</td>
+                      <td>{c.election_nom}</td>
+                      <td>{c.programme}</td>
+                      <td>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => supprimerCandidat(c.id)}
+                        >
+                          Supprimer
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="4" className="text-center text-muted py-3">
+                        Aucun candidat enregistré.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-dark text-white text-center py-3 mt-5">
+        <div className="container">
+          &copy; {new Date().getFullYear()} Election - Tous droits réservés.
+        </div>
+      </footer>
     </div>
   );
 };

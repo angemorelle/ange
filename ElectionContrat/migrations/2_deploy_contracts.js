@@ -4,3 +4,4 @@ const Election = artifacts.require("ElectionDapp");
 module.exports = function (deployer) {
   deployer.deploy(Election);
 };
+ 

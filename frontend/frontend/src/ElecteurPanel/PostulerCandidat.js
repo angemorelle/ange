@@ -1,3 +1,4 @@
+import 'bootstrap/dist/css/bootstrap.min.css';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -6,15 +7,19 @@ const PostulerCandidat = () => {
   const [electionSelectionnee, setElectionSelectionnee] = useState(null);
   const [programme, setProgramme] = useState("");
 
-  const electeurId = localStorage.getItem('electeur_id'); // ⚠️ Supposé être stocké après connexion
+  const electeurId = localStorage.getItem('electeur_id');
 
   useEffect(() => {
     fetchElections();
   }, []);
 
   const fetchElections = async () => {
-    const res = await axios.get('http://localhost:3001/api/elections');
-    setElections(res.data.filter(e => e.status === 'en_attente'));
+    try {
+      const res = await axios.get('http://localhost:3001/api/elections');
+      setElections(res.data.filter(e => e.status === 'en_attente'));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handlePostulerClick = (election) => {
@@ -40,53 +45,83 @@ const PostulerCandidat = () => {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Postuler en tant que Candidat</h2>
-
-      {!electionSelectionnee ? (
-        <div className="grid gap-4">
-          {elections.map(e => (
-            <div key={e.id} className="p-4 border rounded shadow-sm flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-semibold">{e.nom}</h3>
-                <p>Du {new Date(e.date_ouverture).toLocaleDateString()} au {new Date(e.date_fermeture).toLocaleDateString()}</p>
-              </div>
-              <button
-                onClick={() => handlePostulerClick(e)}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-              >
-                Postuler
-              </button>
-            </div>
-          ))}
-          {elections.length === 0 && <p>Aucune élection ouverte pour le moment.</p>}
-        </div>
-      ) : (
-        <div className="p-4 border rounded shadow-md">
-          <h3 className="text-xl mb-2">Candidature à l’élection : <strong>{electionSelectionnee.nom}</strong></h3>
-          <textarea
-            placeholder="Votre programme"
-            value={programme}
-            onChange={(e) => setProgramme(e.target.value)}
-            className="w-full border px-3 py-2 rounded mb-4"
-            rows={5}
-          />
-          <div className="flex gap-4">
-            <button
-              onClick={soumettreCandidature}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-            >
-              Soumettre
-            </button>
-            <button
-              onClick={() => setElectionSelectionnee(null)}
-              className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded"
-            >
-              Annuler
-            </button>
+    <div className="d-flex flex-column min-vh-100" style={{ backgroundColor: "#f8f9fa" }}>
+      {/* Header */}
+      <header>
+        <nav className="navbar navbar-expand-lg" style={{ backgroundColor: "#6c9eff" }}>
+          <div className="container justify-content-center">
+            <span className="navbar-brand text-white fs-3 fw-bold">Election</span>
           </div>
+        </nav>
+      </header>
+
+      {/* Main content */}
+      <main className="flex-fill">
+        <div className="container mt-5">
+          <h2 className="text-center fw-bold mb-4">Postuler en tant que Candidat</h2>
+
+          {!electionSelectionnee ? (
+            <div className="row">
+              {elections.length > 0 ? elections.map(e => (
+                <div key={e.id} className="col-md-6 mb-4">
+                  <div className="card shadow-sm h-100">
+                    <div className="card-body d-flex flex-column justify-content-between">
+                      <div>
+                        <h5 className="card-title fw-bold">{e.nom}</h5>
+                        <p className="card-text">
+                          Du {new Date(e.date_ouverture).toLocaleDateString()} au {new Date(e.date_fermeture).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        className="btn btn-success mt-3"
+                        onClick={() => handlePostulerClick(e)}
+                      >
+                        Postuler
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <p className="text-center text-muted">Aucune élection ouverte pour le moment.</p>
+              )}
+            </div>
+          ) : (
+            <div className="card shadow p-4">
+              <h4 className="mb-3">Candidature à l’élection : <strong>{electionSelectionnee.nom}</strong></h4>
+              <div className="mb-3">
+                <textarea
+                  className="form-control"
+                  rows="5"
+                  placeholder="Votre programme"
+                  value={programme}
+                  onChange={(e) => setProgramme(e.target.value)}
+                />
+              </div>
+              <div className="d-flex justify-content-end gap-2">
+                <button
+                  className="btn btn-primary"
+                  onClick={soumettreCandidature}
+                >
+                  Soumettre
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setElectionSelectionnee(null)}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-dark text-white text-center py-3 mt-5">
+        <div className="container">
+          &copy; {new Date().getFullYear()} Election - Tous droits réservés.
+        </div>
+      </footer>
     </div>
   );
 };
