@@ -23,7 +23,11 @@ import {
   Fade,
   Zoom,
   Button,
-  Divider
+  Divider,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
 } from '@mui/material';
 import {
   AdminPanelSettings,
@@ -39,7 +43,9 @@ import {
   TrendingUp,
   Assignment,
   LocationCity,
-  SupervisorAccount
+  SupervisorAccount,
+  EmojiEvents,
+  Visibility,
 } from '@mui/icons-material';
 import { useAuth } from '../App';
 import { adminService, electionService, statisticsService } from '../services/api';
@@ -243,6 +249,20 @@ const AdminDashboard = () => {
     
     const statusInfo = statusMap[status] || { label: status, color: 'default' };
     return <Chip label={statusInfo.label} color={statusInfo.color} size="small" />;
+  };
+
+  const getElectionStatus = (election) => {
+    const now = new Date();
+    const ouverture = new Date(election.date_ouverture);
+    const fermeture = new Date(election.date_fermeture);
+
+    if (now < ouverture) {
+      return { label: 'Programmée', color: 'warning', bgColor: alpha('#FFB300', 0.2) };
+    } else if (now >= ouverture && now <= fermeture) {
+      return { label: 'Active', color: 'success', bgColor: alpha('#00C853', 0.2) };
+    } else {
+      return { label: 'Terminée', color: 'error', bgColor: alpha('#F44336', 0.2) };
+    }
   };
 
   if (loading) {
@@ -558,89 +578,64 @@ const AdminDashboard = () => {
         {/* Élections récentes */}
         <Grid item xs={12} lg={8}>
           <Fade in timeout={900}>
-            <Card>
+            <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-                  <Typography variant="h6" fontWeight={600}>
-                    Élections Récentes
-                  </Typography>
-                  <Button
-                    startIcon={<Add />}
-                    variant="outlined"
-                    size="small"
-                    onClick={() => navigate('/admin/elections')}
-                  >
-                    Nouvelle
-                  </Button>
-                </Box>
-                
-                {recentElections.length === 0 ? (
-                  <Alert severity="info" sx={{ borderRadius: 3 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Aucune élection
-                    </Typography>
-                    <Typography variant="body2">
-                      Créez votre première élection pour commencer.
-                    </Typography>
-                  </Alert>
-                ) : (
-                  <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #E2E8F0' }}>
-                    <Table>
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: alpha('#9C27B0', 0.05) }}>
-                          <TableCell sx={{ fontWeight: 600 }}>Élection</TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>Dates</TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>Statut</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 600 }}>Actions</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {recentElections.map((election) => (
-                          <TableRow 
-                            key={election.id}
-                            sx={{
-                              '&:hover': {
-                                backgroundColor: alpha('#9C27B0', 0.02),
-                              },
-                            }}
-                          >
-                            <TableCell>
-                              <Box>
-                                <Typography variant="body1" fontWeight={500}>
-                                  {election.nom}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  {election.poste_nom}
-                                </Typography>
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Typography variant="body2">
+                <Typography variant="h6" gutterBottom>
+                  Élections récentes
+                </Typography>
+                {recentElections.length > 0 ? (
+                  <List>
+                    {recentElections.map((election) => (
+                      <ListItem key={election.id} divider>
+                        <ListItemAvatar>
+                          <Avatar sx={{ bgcolor: getElectionStatus(election).bgColor }}>
+                            <HowToVote />
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={election.nom}
+                          secondary={
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">
                                 {new Date(election.date_ouverture).toLocaleDateString('fr-FR')} - {new Date(election.date_fermeture).toLocaleDateString('fr-FR')}
                               </Typography>
-                            </TableCell>
-                            <TableCell>
-                              {getStatusChip(election)}
-                            </TableCell>
-                            <TableCell align="center">
-                              <Tooltip title="Gérer">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => navigate('/admin/elections')}
-                                  sx={{
-                                    color: '#9C27B0',
-                                    '&:hover': { backgroundColor: alpha('#9C27B0', 0.1) }
-                                  }}
-                                >
-                                  <Edit />
-                                </IconButton>
-                              </Tooltip>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                              <Chip
+                                label={getElectionStatus(election).label}
+                                color={getElectionStatus(election).color}
+                                size="small"
+                                sx={{ mt: 1 }}
+                              />
+                            </Box>
+                          }
+                        />
+                        <Box display="flex" gap={1}>
+                          <Tooltip title="Voir détails">
+                            <IconButton
+                              size="small"
+                              onClick={() => navigate(`/elections/${election.id}/candidats`)}
+                            >
+                              <Visibility />
+                            </IconButton>
+                          </Tooltip>
+                          {(getElectionStatus(election).label === 'Terminée' || getElectionStatus(election).label === 'Active') && (
+                            <Tooltip title="Voir les résultats">
+                              <IconButton
+                                size="small"
+                                sx={{ color: '#00C853' }}
+                                onClick={() => navigate(`/elections/${election.id}/resultats`)}
+                              >
+                                <EmojiEvents />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Aucune élection récente
+                  </Typography>
                 )}
               </CardContent>
             </Card>

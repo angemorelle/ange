@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const db = require('../db');
-const { authenticateToken, requireRole } = require('../../middleware/auth');
+const { authenticateToken, optionalAuth, requireRole } = require('../../middleware/auth');
 
 // Validation des données d'élection
 const validateElection = [
@@ -75,17 +75,28 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 // 🔹 Récupérer toutes les élections
-router.get('/', (req, res) => {
+router.get('/', optionalAuth, (req, res) => {
   const { limit, offset, status } = req.query;
+  const userId = req.user ? req.user.id : null;
   
   let sql = `
-    SELECT Elections.*, Poste.nom AS poste_nom 
+    SELECT Elections.*, 
+           Poste.nom AS poste_nom,
+           COUNT(DISTINCT CASE WHEN Candidats.status = 'approuve' THEN Candidats.id END) AS candidat_count,
+           CASE 
+             WHEN NOW() < Elections.date_ouverture THEN 'planifiee'
+             WHEN NOW() BETWEEN Elections.date_ouverture AND Elections.date_fermeture THEN 'ouverte'
+             ELSE 'fermee'
+           END AS status,
+           CASE WHEN Bulletin_User.id IS NOT NULL THEN 1 ELSE 0 END AS user_has_voted
     FROM Elections 
     LEFT JOIN Poste ON Elections.poste_id = Poste.id
+    LEFT JOIN Candidats ON Elections.id = Candidats.elections_id
+    LEFT JOIN Bulletin Bulletin_User ON Elections.id = Bulletin_User.elections_id AND Bulletin_User.electeur_id = ?
   `;
   
   const conditions = [];
-  const params = [];
+  const params = [userId || 0]; // Si pas d'utilisateur, utiliser 0 pour ne pas matcher
   
   if (status) {
     conditions.push('Elections.statut = ?');
@@ -96,7 +107,7 @@ router.get('/', (req, res) => {
     sql += ' WHERE ' + conditions.join(' AND ');
   }
   
-  sql += ' ORDER BY Elections.date_ouverture DESC';
+  sql += ' GROUP BY Elections.id, Elections.nom, Elections.description, Elections.date_ouverture, Elections.date_fermeture, Elections.poste_id, Elections.blockchain_id, Elections.status, Elections.created_at, Elections.updated_at, Poste.nom ORDER BY Elections.date_ouverture DESC';
   
   if (limit) {
     sql += ' LIMIT ?';

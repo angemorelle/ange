@@ -41,6 +41,26 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Middleware d'authentification optionnel
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      req.user = null;
+    } else {
+      req.user = user;
+    }
+    next();
+  });
+};
+
 // Middleware d'autorisation par rôle
 const requireRole = (allowedRoles) => {
   return (req, res, next) => {
@@ -297,6 +317,7 @@ setInterval(cleanExpiredSessions, 60 * 60 * 1000);
 module.exports = {
   generateToken,
   authenticateToken,
+  optionalAuth,
   requireRole,
   validateRegister,
   validateLogin,

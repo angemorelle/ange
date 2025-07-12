@@ -55,6 +55,7 @@ import {
   Download,
   MoreVert,
   Menu as MenuIcon,
+  EmojiEvents,
 } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
@@ -484,6 +485,17 @@ const ElectionList = () => {
                                   <Visibility />
                                 </IconButton>
                               </Tooltip>
+                              {(status.label === 'Terminée' || status.label === 'Active') && (
+                                <Tooltip title="Voir les résultats">
+                                  <IconButton
+                                    size="small"
+                                    sx={{ color: '#00C853' }}
+                                    onClick={() => navigate(`/elections/${election.id}/resultats`)}
+                                  >
+                                    <EmojiEvents />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
                               <Tooltip title="Modifier">
                                 <IconButton
                                   size="small"

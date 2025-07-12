@@ -30,7 +30,7 @@ router.get('/candidates/:electionId', authenticateToken, (req, res) => {
         SELECT 
           c.id,
           c.programme,
-          c.statut,
+          c.status,
           e.nom as electeur_nom,
           e.email as electeur_email,
           el.nom as election_nom,
@@ -38,7 +38,7 @@ router.get('/candidates/:electionId', authenticateToken, (req, res) => {
         FROM Candidats c
         JOIN Electeurs e ON c.electeur_id = e.id
         JOIN Elections el ON c.elections_id = el.id
-        WHERE c.elections_id = ? AND c.statut = 'approuve'
+        WHERE c.elections_id = ? AND c.status = 'approuve'
         ORDER BY c.id ASC
       `;
 
@@ -106,7 +106,7 @@ router.post('/submit', authenticateToken, (req, res) => {
         }
 
         // Vérifier que le candidat existe et est approuvé
-        const checkCandidatSql = 'SELECT id FROM Candidats WHERE id = ? AND elections_id = ? AND statut = "approuve"';
+        const checkCandidatSql = 'SELECT id FROM Candidats WHERE id = ? AND elections_id = ? AND status = "approuve"';
         
         db.query(checkCandidatSql, [candidatId, electionId], (candidatErr, candidatResults) => {
           if (candidatErr) {
@@ -123,8 +123,8 @@ router.post('/submit', authenticateToken, (req, res) => {
 
           // Enregistrer le vote
           const insertVoteSql = `
-            INSERT INTO Bulletin (electeur_id, elections_id, candidat_id, created_at)
-            VALUES (?, ?, ?, NOW())
+            INSERT INTO Bulletin (electeur_id, elections_id, candidat_id)
+            VALUES (?, ?, ?)
           `;
 
           db.query(insertVoteSql, [userId, electionId, candidatId], (insertErr, result) => {
@@ -160,7 +160,7 @@ router.get('/check/:electionId', authenticateToken, (req, res) => {
     const checkSql = `
       SELECT 
         b.id,
-        b.created_at,
+        b.vote_timestamp,
         c.programme,
         e.nom as candidat_nom
       FROM Bulletin b
@@ -181,7 +181,7 @@ router.get('/check/:electionId', authenticateToken, (req, res) => {
           success: true,
           data: {
             hasVoted: true,
-            voteDate: vote.created_at,
+            voteDate: vote.vote_timestamp,
             candidatName: vote.candidat_nom
           }
         });

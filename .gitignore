@@ -21,9 +21,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-frontend.log*
-backend.log*
-ganache.log*
-truffle.log*
+frontend.log
+backend.log
+ganache.log
+truffle.log
 
-ganache.pid*
+ganache.pid

@@ -1,360 +1,283 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
   Card,
   CardContent,
   Grid,
-  Button,
-  Box,
-  Avatar,
   Chip,
+  Box,
+  Button,
   Alert,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Avatar,
   Divider,
-  Paper,
   Fade,
-  Zoom,
-  alpha
+  IconButton,
+  Tooltip,
+  Paper
 } from '@mui/material';
 import {
-  HowToVote,
   Person,
+  ArrowBack,
   Assignment,
   CheckCircle,
-  ArrowBack,
-  Security,
-  Timeline,
-  Visibility,
-  Lock
+  AccessTime,
+  Cancel,
+  HowToVote,
+  Timeline
 } from '@mui/icons-material';
-import { useAuth } from '../App';
-import { adminService, electeurService, electionService } from '../services/api';
+import { electionService, adminService, electeurService } from '../services/api';
 import { toast } from 'react-toastify';
 
-const VotePage = () => {
+const VotesPage = () => {
   const { electionId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
-  const [voting, setVoting] = useState(false);
   const [election, setElection] = useState(null);
   const [candidats, setCandidats] = useState([]);
-  const [selectedCandidat, setSelectedCandidat] = useState(null);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [isCandidate, setIsCandidate] = useState(false);
+  
+  // Détecter si l'utilisateur vient de voter
+  const [justVoted, setJustVoted] = useState(false);
 
-  useEffect(() => {
-    if (!user || user.type !== 'electeur') {
-      toast.error('Accès réservé aux électeurs');
-      navigate('/login');
-      return;
-    }
-    loadElectionData();
-  }, [electionId, user, navigate]);
+  // Récupérer l'utilisateur courant (depuis localStorage)
+  const user = React.useMemo(() => {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  }, []);
 
-  const loadElectionData = async () => {
+  const loadElectionAndCandidats = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Vérifier si l'électeur a déjà voté
-      const voteCheckRes = await electeurService.checkIfVoted(electionId);
-      if (voteCheckRes.success && voteCheckRes.data.has_voted) {
-        toast.info('Vous avez déjà voté pour cette élection');
-        navigate('/electeur/dashboard');
-        return;
+      // Si l'utilisateur vient de voter, forcer hasVoted à true
+      if (justVoted) {
+        setHasVoted(true);
+        // Nettoyer l'URL
+        navigate(`/elections/${electionId}/candidats`, { replace: true });
       }
       
-      // Charger les données de l'élection et les candidats spécifiquement pour le vote
-      const [electionRes, candidatsRes] = await Promise.all([
-        electionService.getElection(electionId),
-        electeurService.getCandidatesForVoting(electionId)
-      ]);
-
-      if (electionRes.success) {
-        setElection(electionRes.data);
-        
-        // Vérifier que l'élection est active
-        const now = new Date();
-        const ouverture = new Date(electionRes.data.date_ouverture);
-        const fermeture = new Date(electionRes.data.date_fermeture);
-        
-        if (now < ouverture) {
-          toast.warning('L\'élection n\'a pas encore commencé');
-          navigate('/electeur/dashboard');
-      return;
-    }
-
-        if (now > fermeture) {
-          toast.warning('L\'élection est terminée');
-          navigate('/electeur/dashboard');
-          return;
+      // Charger les informations de l'élection
+      const electionResponse = await electionService.getElection(electionId);
+      if (electionResponse.success) {
+        setElection(electionResponse.data);
+      }
+      // Charger les candidats
+      const candidatsResponse = await adminService.getCandidats({ elections_id: electionId });
+      if (candidatsResponse.success) {
+        setCandidats(candidatsResponse.data || []);
+      }
+      // Vérifier si l'utilisateur a déjà voté (sauf si on vient de voter)
+      if (user && user.type === 'electeur' && !justVoted) {
+        const voteResponse = await electeurService.checkIfVoted(electionId);
+        if (voteResponse.success) {
+          setHasVoted(!!voteResponse.data.has_voted);
+        }
+        // Vérifier si l'utilisateur est candidat à cette élection
+        const candidatsUserResponse = await adminService.getCandidats({ elections_id: electionId, electeur_id: user.id });
+        if (candidatsUserResponse.success && candidatsUserResponse.data.length > 0) {
+          setIsCandidate(true);
+        } else {
+          setIsCandidate(false);
         }
       }
-
-      if (candidatsRes.success) {
-        setCandidats(candidatsRes.data);
-      }
-      
     } catch (error) {
-      console.error('Erreur chargement élection:', error);
-      toast.error('Erreur lors du chargement de l\'élection');
-      navigate('/electeur/dashboard');
+      console.error('Erreur chargement données:', error);
+      setError('Impossible de charger les données de l\'élection');
+      toast.error('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
-  };
+  }, [electionId, user, justVoted, navigate]);
 
-  const handleCandidatSelect = (candidat) => {
-    setSelectedCandidat(candidat);
-    setConfirmDialogOpen(true);
-  };
+  // Détecter les changements d'URL pour le paramètre voted
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const votedParam = searchParams.get('voted') === 'true';
+    setJustVoted(votedParam);
+  }, [location.search]);
 
-  const handleConfirmVote = async () => {
-    if (!selectedCandidat) return;
+  useEffect(() => {
+    if (electionId) {
+      loadElectionAndCandidats();
+    }
+  }, [electionId, loadElectionAndCandidats]);
 
-    try {
-      setVoting(true);
-      
-      // Appel API pour voter
-      const voteData = {
-        elections_id: parseInt(electionId),
-        candidat_id: selectedCandidat.id
-      };
-
-      const voteResponse = await electeurService.submitVote(voteData);
-      
-      if (voteResponse.success) {
-        toast.success(`Vote enregistré avec succès pour ${selectedCandidat.electeur_nom}!`);
-        setConfirmDialogOpen(false);
-        
-        // Redirection vers le dashboard après un délai avec état spécial pour rafraîchir
-        setTimeout(() => {
-          navigate('/electeur/dashboard', { 
-            state: { fromVotePage: true }
-          });
-        }, 2000);
-      }
-      
-    } catch (error) {
-      console.error('Erreur vote:', error);
-      const errorMessage = error.response?.data?.error || 'Erreur lors de l\'enregistrement du vote';
-      toast.error(errorMessage);
-    } finally {
-      setVoting(false);
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'approuve': return 'success';
+      case 'en_attente': return 'warning';
+      case 'rejete': return 'error';
+      default: return 'default';
     }
   };
 
-  const handleCloseDialog = () => {
-    if (!voting) {
-      setConfirmDialogOpen(false);
-      setSelectedCandidat(null);
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'approuve': return <CheckCircle />;
+      case 'en_attente': return <AccessTime />;
+      case 'rejete': return <Cancel />;
+      default: return <Assignment />;
     }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'approuve': return 'Approuvé';
+      case 'en_attente': return 'En attente';
+      case 'rejete': return 'Rejeté';
+      default: return 'Inconnu';
+    }
+  };
+
+  const getElectionStatusColor = (status) => {
+    switch (status) {
+      case 'ouverte':
+      case 'active': return 'success';
+      case 'planifiee': return 'warning';
+      case 'fermee': return 'error';
+      default: return 'default';
+    }
+  };
+
+  // Logique d'affichage du bouton "Voter maintenant"
+  const canVote = React.useMemo(() => {
+    if (!election || !user || user.type !== 'electeur') return false;
+    const status = election.statut || election.status;
+    // Accepter "ouverte" et "active" comme statuts permettant de voter
+    return (status === 'ouverte' || status === 'active') && !hasVoted;
+  }, [election, user, hasVoted]);
+
+  const handleVote = () => {
+    navigate(`/electeur/vote/${electionId}`);
   };
 
   if (loading) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={8}>
+      <Container>
+        <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="60vh">
           <CircularProgress size={60} thickness={4} sx={{ mb: 2 }} />
           <Typography variant="h6" color="primary">
-            Chargement de l'élection...
+            Chargement des candidats...
           </Typography>
         </Box>
       </Container>
     );
   }
 
-  if (!election) {
+  if (error) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">
-          Élection non trouvée
+      <Container sx={{ py: 4 }}>
+        <Alert severity="error" sx={{ mb: 4 }}>
+          {error}
         </Alert>
+        <Button
+          startIcon={<ArrowBack />}
+          onClick={() => navigate('/electeur')}
+          variant="outlined"
+        >
+          Retour au dashboard
+        </Button>
       </Container>
     );
   }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header */}
+      {/* Header avec navigation */}
       <Fade in timeout={500}>
         <Box mb={4}>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={() => navigate('/electeur/dashboard')}
-            sx={{ mb: 2 }}
-          >
-            Retour au tableau de bord
-          </Button>
-          
-          <Box display="flex" alignItems="center" mb={2}>
-            <Avatar
-              sx={{
-                width: 64,
-                height: 64,
-                background: 'linear-gradient(135deg, #2E73F8 0%, #1E3A8A 100%)',
-                mr: 3,
-              }}
-            >
-              <HowToVote sx={{ fontSize: 32 }} />
-            </Avatar>
-            <Box>
-              <Typography variant="h4" component="h1" fontWeight={700}>
-                {election.nom}
+          <Box display="flex" alignItems="center" mb={3}>
+            <Tooltip title="Retour au dashboard">
+              <IconButton
+                onClick={() => navigate('/electeur')}
+                sx={{
+                  backgroundColor: 'rgba(46, 115, 248, 0.1)',
+                  mr: 2,
+                  '&:hover': {
+                    backgroundColor: 'rgba(46, 115, 248, 0.2)',
+                  }
+                }}
+              >
+                <ArrowBack sx={{ color: 'primary.main' }} />
+              </IconButton>
+            </Tooltip>
+            <Box flexGrow={1}>
+              <Typography variant="h4" fontWeight={700} gutterBottom>
+                Candidats à l'élection
               </Typography>
               <Typography variant="h6" color="text.secondary">
-                Sélectionnez votre candidat
+                {election?.nom || 'Élection non trouvée'}
               </Typography>
             </Box>
           </Box>
-        </Box>
-      </Fade>
 
-      {/* Informations de l'élection */}
-      <Fade in timeout={700}>
-        <Card sx={{ mb: 4, border: '1px solid', borderColor: alpha('#2E73F8', 0.2) }}>
-          <CardContent>
-            <Box display="flex" alignItems="center" mb={2}>
-              <Timeline sx={{ mr: 2, color: 'primary.main' }} />
-              <Typography variant="h6" fontWeight={600}>
-                Informations sur l'élection
-              </Typography>
-            </Box>
-            
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Box display="flex" alignItems="center" mb={1}>
-                  <Assignment sx={{ mr: 1, color: 'text.secondary' }} />
-                  <Typography variant="body1">
-                    <strong>Poste:</strong> {election.poste_nom}
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" mb={1}>
-                  <Person sx={{ mr: 1, color: 'text.secondary' }} />
-                  <Typography variant="body1">
-                    <strong>Candidats:</strong> {candidats.length}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box display="flex" alignItems="center" mb={1}>
-                  <Security sx={{ mr: 1, color: 'text.secondary' }} />
-                  <Typography variant="body1">
-                    <strong>Vote sécurisé:</strong> Blockchain
-                  </Typography>
-                </Box>
-                <Chip
-                  label="Élection Active"
-                  color="success"
-                  icon={<CheckCircle />}
-                  sx={{ mt: 1 }}
-                />
-              </Grid>
-            </Grid>
-            
-            {election.description && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="body2" color="text.secondary">
-                  {election.description}
-                </Typography>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </Fade>
-
-      {/* Liste des candidats */}
-      <Fade in timeout={900}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={600} mb={3}>
-              Candidats à cette élection
-            </Typography>
-
-          {candidats.length === 0 ? (
-              <Alert severity="warning">
-                <Typography variant="h6" gutterBottom>
-                  Aucun candidat disponible
-                </Typography>
-                <Typography variant="body2">
-                  Il n'y a actuellement aucun candidat approuvé pour cette élection.
-                </Typography>
-              </Alert>
-            ) : (
-              <Grid container spacing={3}>
-                {candidats.map((candidat, index) => (
-                  <Grid item xs={12} md={6} key={candidat.id}>
-                    <Zoom in timeout={300 + index * 100}>
-                      <Paper
-                        elevation={2}
-                        sx={{
-                          p: 3,
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          transition: 'all 0.3s ease',
-                          cursor: 'pointer',
-                          border: '2px solid transparent',
-                          '&:hover': {
-                            transform: 'translateY(-4px)',
-                            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
-                            borderColor: alpha('#2E73F8', 0.3),
-                          }
-                        }}
-                        onClick={() => handleCandidatSelect(candidat)}
-                      >
-                        <Box display="flex" alignItems="center" mb={2}>
-                          <Avatar
-                            sx={{
-                              width: 56,
-                              height: 56,
-                              background: 'linear-gradient(135deg, #FF6B35 0%, #F44336 100%)',
-                              mr: 2,
-                              fontSize: '1.5rem',
-                              fontWeight: 700,
-                            }}
-                          >
-                            {candidat.electeur_nom?.charAt(0)?.toUpperCase()}
-                          </Avatar>
-                          <Box flexGrow={1}>
-                            <Typography variant="h6" fontWeight={600}>
-                              {candidat.electeur_nom}
-                            </Typography>
-                            <Chip
-                              label="Candidat Approuvé"
-                              color="success"
-                              size="small"
-                              sx={{ mt: 0.5 }}
-                            />
-                          </Box>
+          {/* Informations sur l'élection */}
+          {election && (
+            <Paper
+              sx={{
+                p: 3,
+                mb: 4,
+                background: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
+                border: '1px solid',
+                borderColor: 'rgba(46, 115, 248, 0.1)',
+              }}
+            >
+              <Grid container spacing={3} alignItems="center">
+                <Grid item xs={12} md={8}>
+                  <Box display="flex" alignItems="center" mb={2}>
+                    <HowToVote sx={{ mr: 2, color: 'primary.main', fontSize: 28 }} />
+                    <Box>
+                      <Typography variant="h6" fontWeight={600}>
+                        {election.nom}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {election.description}
+                      </Typography>
+                      {isCandidate && (
+                        <Box mt={1}>
+                          <Chip
+                            label="Vous êtes candidat à cette élection"
+                            color="success"
+                            icon={<Assignment />}
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                          />
                         </Box>
-                        
-                        <Box flexGrow={1} mb={2}>
-                          <Typography variant="body2" color="text.secondary" gutterBottom>
-                            <strong>Programme électoral:</strong>
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            display: '-webkit-box',
-                            WebkitLineClamp: 4,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {candidat.programme}
-                          </Typography>
-                        </Box>
-                        
+                      )}
+                    </Box>
+                  </Box>
+                  {election.date_ouverture && (
+                    <Typography variant="body2" color="text.secondary">
+                      📅 Ouverture: {new Date(election.date_ouverture).toLocaleDateString('fr-FR')} 
+                      {election.date_fermeture && ` - Fermeture: ${new Date(election.date_fermeture).toLocaleDateString('fr-FR')}`}
+                    </Typography>
+                  )}
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Box display="flex" flexDirection="column" alignItems="flex-end" gap={2}>
+                    {/* Statut de l'élection en premier */}
+                    <Chip
+                      label={election.statut || election.status || 'Statut inconnu'}
+                      color={getElectionStatusColor(election.statut || election.status)}
+                      icon={<Timeline />}
+                      sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+                    />
+                    
+                    {/* Boutons et badges en dessous du statut */}
+                    <Box display="flex" flexDirection="column" alignItems="flex-end" gap={1}>
+                      {/* Bouton "Voter maintenant" - priorité haute */}
+                      {canVote && (
                         <Button
                           variant="contained"
                           startIcon={<HowToVote />}
-                          fullWidth
+                          onClick={handleVote}
                           sx={{
                             background: 'linear-gradient(135deg, #2E73F8 0%, #1E3A8A 100%)',
                             '&:hover': {
@@ -362,116 +285,250 @@ const VotePage = () => {
                             }
                           }}
                         >
-                          Voter pour ce candidat
+                          Voter maintenant
                         </Button>
-                      </Paper>
-                    </Zoom>
-                  </Grid>
-                ))}
+                      )}
+                      
+                      {/* Badge "Déjà voté" - peut apparaître avec d'autres badges */}
+                      {hasVoted && (
+                        <Chip
+                          label="Déjà voté"
+                          color="success"
+                          icon={<CheckCircle />}
+                          sx={{ 
+                            fontWeight: 600,
+                            background: 'linear-gradient(135deg, #00C853 0%, #4CAF50 100%)',
+                            color: 'white',
+                            '& .MuiChip-icon': {
+                              color: 'white'
+                            }
+                          }}
+                        />
+                      )}
+                      
+                      {/* Badge "Vous êtes candidat" - peut apparaître avec d'autres badges */}
+                      {isCandidate && (
+                        <Chip
+                          label="Vous êtes candidat"
+                          color="success"
+                          icon={<Assignment />}
+                          variant="outlined"
+                          sx={{ 
+                            fontWeight: 600,
+                            borderWidth: 2,
+                            borderColor: 'success.main',
+                            color: 'success.main',
+                            '& .MuiChip-icon': {
+                              color: 'success.main'
+                            }
+                          }}
+                        />
+                      )}
+                      
+                      {/* Message si utilisateur non connecté */}
+                      {!user && (
+                        <Chip
+                          label="Connectez-vous pour voter"
+                          color="warning"
+                          icon={<AccessTime />}
+                          sx={{ fontWeight: 600 }}
+                        />
+                      )}
+                      
+                      {/* Message si utilisateur n'est pas électeur */}
+                      {user && user.type !== 'electeur' && (
+                        <Chip
+                          label="Réservé aux électeurs"
+                          color="info"
+                          icon={<Person />}
+                          sx={{ fontWeight: 600 }}
+                        />
+                      )}
+                    </Box>
+                  </Box>
+                </Grid>
               </Grid>
-            )}
-          </CardContent>
-        </Card>
+            </Paper>
+          )}
+        </Box>
       </Fade>
 
-      {/* Dialog de confirmation */}
-      <Dialog
-        open={confirmDialogOpen}
-        onClose={handleCloseDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box display="flex" alignItems="center">
-            <Lock sx={{ mr: 2, color: 'warning.main' }} />
-            Confirmer votre vote
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {selectedCandidat && (
-            <Box>
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <Typography variant="body2">
-                  <strong>Attention:</strong> Une fois confirmé, votre vote ne pourra plus être modifié.
-                </Typography>
-              </Alert>
-              
-              <Paper sx={{ p: 2, backgroundColor: alpha('#2E73F8', 0.05) }}>
-                <Typography variant="h6" gutterBottom>
-                  Vous allez voter pour:
-                </Typography>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Avatar
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      background: 'linear-gradient(135deg, #FF6B35 0%, #F44336 100%)',
-                      mr: 2,
-                    }}
-                  >
-                    {selectedCandidat.electeur_nom?.charAt(0)?.toUpperCase()}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="h6" fontWeight={600}>
-                      {selectedCandidat.electeur_nom}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Candidat à l'élection: {election.nom}
-                    </Typography>
-                  </Box>
+      {/* Statistiques */}
+      <Fade in timeout={700}>
+        <Box mb={4}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ textAlign: 'center', p: 2 }}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                  <Person sx={{ fontSize: 40, color: 'primary.main' }} />
                 </Box>
-              </Paper>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={handleCloseDialog} 
-            disabled={voting}
-            color="inherit"
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={handleConfirmVote}
-            variant="contained"
-            disabled={voting}
-            startIcon={voting ? <CircularProgress size={20} /> : <HowToVote />}
-            sx={{
-              background: 'linear-gradient(135deg, #00C853 0%, #4CAF50 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #4CAF50 0%, #00C853 100%)',
-              }
-            }}
-          >
-            {voting ? 'Enregistrement...' : 'Confirmer mon vote'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+                <Typography variant="h4" fontWeight={700} color="primary">
+                  {candidats.length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Candidat(s) total
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ textAlign: 'center', p: 2 }}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                  <CheckCircle sx={{ fontSize: 40, color: 'success.main' }} />
+                </Box>
+                <Typography variant="h4" fontWeight={700} color="success.main">
+                  {candidats.filter(c => c.status === 'approuve').length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Approuvé(s)
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ textAlign: 'center', p: 2 }}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                  <AccessTime sx={{ fontSize: 40, color: 'warning.main' }} />
+                </Box>
+                <Typography variant="h4" fontWeight={700} color="warning.main">
+                  {candidats.filter(c => c.status === 'en_attente').length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  En attente
+                </Typography>
+              </Card>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Card sx={{ textAlign: 'center', p: 2 }}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                  <Cancel sx={{ fontSize: 40, color: 'error.main' }} />
+                </Box>
+                <Typography variant="h4" fontWeight={700} color="error.main">
+                  {candidats.filter(c => c.status === 'rejete').length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Rejeté(s)
+                </Typography>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+      </Fade>
 
-      {/* Informations sécurité */}
-      <Fade in timeout={1100}>
-        <Alert 
-          severity="info" 
-          sx={{ 
-            mt: 4,
-            borderRadius: 3,
-            backgroundColor: alpha('#2E73F8', 0.05),
-            border: `1px solid ${alpha('#2E73F8', 0.2)}`,
-          }}
-        >
-          <Typography variant="h6" gutterBottom>
-            🔒 Vote Sécurisé par Blockchain
+      {/* Liste des candidats */}
+      <Fade in timeout={900}>
+        <Box>
+          <Typography variant="h5" fontWeight={600} mb={3}>
+            Liste des candidats
           </Typography>
-          <Typography variant="body2">
-            Votre vote sera enregistré de manière sécurisée et anonyme sur la blockchain. 
-            Une fois voté, il sera impossible de modifier votre choix, garantissant ainsi 
-            l'intégrité et la transparence du processus électoral.
-          </Typography>
-        </Alert>
+
+          {candidats.length === 0 ? (
+            <Alert severity="info" sx={{ borderRadius: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Aucun candidat pour cette élection
+              </Typography>
+              <Typography variant="body2">
+                Il n'y a actuellement aucun candidat inscrit pour cette élection. 
+                Les candidatures peuvent encore être en cours de traitement.
+              </Typography>
+            </Alert>
+          ) : (
+            <Grid container spacing={3}>
+              {candidats.map((candidat, index) => (
+                <Grid item xs={12} md={6} lg={4} key={candidat.id}>
+                  <Fade in timeout={300 * (index + 1)}>
+                    <Card
+                      sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                        {/* Header du candidat */}
+                        <Box display="flex" alignItems="center" mb={3}>
+                          <Avatar
+                            sx={{
+                              width: 56,
+                              height: 56,
+                              mr: 2,
+                              background: 'linear-gradient(135deg, #2E73F8 0%, #1E3A8A 100%)',
+                              fontSize: '1.5rem',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {candidat.nom ? candidat.nom.charAt(0).toUpperCase() : 
+                             candidat.electeur_nom ? candidat.electeur_nom.charAt(0).toUpperCase() : 'C'}
+                          </Avatar>
+                          <Box flexGrow={1}>
+                            <Typography variant="h6" fontWeight={600}>
+                              {candidat.nom || candidat.electeur_nom || 'Candidat'}
+                            </Typography>
+                            <Chip
+                              label={getStatusLabel(candidat.status)}
+                              color={getStatusColor(candidat.status)}
+                              icon={getStatusIcon(candidat.status)}
+                              size="small"
+                              sx={{ fontWeight: 500 }}
+                            />
+                          </Box>
+                        </Box>
+
+                        <Divider sx={{ mb: 2 }} />
+
+                        {/* Programme */}
+                        <Box mb={2}>
+                          <Typography variant="subtitle2" fontWeight={600} mb={1} color="primary">
+                            Programme électoral :
+                          </Typography>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 4,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {candidat.programme || 'Programme non disponible'}
+                          </Typography>
+                        </Box>
+
+                        {/* Date de candidature */}
+                        {candidat.created_at && (
+                          <Typography variant="caption" color="text.secondary">
+                            Candidature déposée le {new Date(candidat.created_at).toLocaleDateString('fr-FR')}
+                          </Typography>
+                        )}
+                      </CardContent>
+
+                      {/* Indicateur de statut en bas */}
+                      <Box
+                        sx={{
+                          height: 4,
+                          background: candidat.status === 'approuve' ? 'linear-gradient(90deg, #00C853 0%, #4CAF50 100%)' :
+                                     candidat.status === 'en_attente' ? 'linear-gradient(90deg, #FFB300 0%, #FFC107 100%)' :
+                                     'linear-gradient(90deg, #F44336 0%, #EF5350 100%)',
+                        }}
+                      />
+                    </Card>
+                  </Fade>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
       </Fade>
     </Container>
   );
 };
 
-export default VotePage;
+export default VotesPage;

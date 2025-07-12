@@ -141,13 +141,15 @@ export const authService = {
 export const electionService = {
   async getElections(params = {}) {
     try {
+      console.log('🔍 electionService.getElections appelé avec params:', params);
       const response = await api.get('/elections', { params });
+      console.log('📊 electionService.getElections réponse:', response.data);
       return {
         success: true,
         data: Array.isArray(response.data.data) ? response.data.data : []
       };
     } catch (error) {
-      console.error('Erreur récupération élections:', error);
+      console.error('❌ electionService.getElections erreur:', error);
       return {
         success: false,
         error: error.response?.data?.error || error.message,
@@ -158,13 +160,25 @@ export const electionService = {
 
   async getElection(id) {
     try {
+      console.log('🔍 electionService.getElection appelé avec id:', id);
       const response = await api.get(`/elections/${id}`);
-      return {
-        success: true,
-        data: response.data
-      };
+      console.log('📊 electionService.getElection réponse:', response.data);
+      
+      // Vérifier la structure de la réponse
+      if (response.data.success) {
+        return {
+          success: true,
+          data: response.data.data || response.data
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.error || 'Élection non trouvée',
+          data: null
+        };
+      }
     } catch (error) {
-      console.error('Erreur récupération élection:', error);
+      console.error('❌ electionService.getElection erreur:', error);
       return {
         success: false,
         error: error.response?.data?.error || error.message,
@@ -214,13 +228,12 @@ export const electionService = {
 
   async getElectionResults(id) {
     try {
-      const response = await api.get(`/elections/${id}/resultats`);
-      return {
-        success: true,
-        data: response.data
-      };
+      console.log('🔍 Appel API getElectionResults avec id:', id);
+      const response = await api.get(`/statistics/elections/${id}/results`);
+      console.log('📊 Réponse API getElectionResults:', response.data);
+      return response.data;
     } catch (error) {
-      console.error('Erreur récupération résultats:', error);
+      console.error('❌ Erreur getElectionResults:', error);
       return {
         success: false,
         error: error.response?.data?.error || error.message,
@@ -451,34 +464,97 @@ export const electeurService = {
 
   async checkIfVoted(electionId) {
     try {
+      console.log('🔍 API: Vérification vote pour élection:', electionId);
       const response = await api.get(`/vote/check/${electionId}`);
-      return {
-        success: true,
-        data: response.data
-      };
+      console.log('📊 API: Réponse vérification vote:', response.data);
+      
+      if (response.data.success) {
+        return {
+          success: true,
+          data: {
+            hasVoted: response.data.data?.hasVoted || false,
+            ...response.data.data
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.error || 'Erreur lors de la vérification du vote',
+          data: { hasVoted: false }
+        };
+      }
     } catch (error) {
-      console.error('Erreur vérification vote:', error);
+      console.error('❌ API: Erreur vérification vote:', error);
       return {
         success: false,
         error: error.response?.data?.error || error.message,
-        data: null
+        data: { hasVoted: false }
       };
     }
   },
 
   async getCandidatesForVoting(electionId) {
     try {
+      console.log('🔍 API: Récupération candidats pour élection:', electionId);
       const response = await api.get(`/vote/candidates/${electionId}`);
-      return {
-        success: true,
-        data: Array.isArray(response.data) ? response.data : []
-      };
+      console.log('📊 API: Réponse candidats:', response.data);
+      
+      if (response.data.success) {
+        return {
+          success: true,
+          data: Array.isArray(response.data.data) ? response.data.data : []
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.error || 'Erreur lors de la récupération des candidats',
+          data: []
+        };
+      }
     } catch (error) {
-      console.error('Erreur récupération candidats pour vote:', error);
+      console.error('❌ API: Erreur récupération candidats pour vote:', error);
       return {
         success: false,
         error: error.response?.data?.error || error.message,
         data: []
+      };
+    }
+  },
+
+  // Méthode pour récupérer les candidats pour voter (alias)
+  async getCandidatsForVote(electionId) {
+    return this.getCandidatesForVoting(electionId);
+  },
+
+  // Méthode pour soumettre un vote avec electionId et candidatId
+  async submitVote(electionId, candidatId) {
+    try {
+      const voteData = {
+        electionId: electionId,
+        candidatId: candidatId
+      };
+      
+      console.log('🔍 API: Soumission vote:', voteData);
+      const response = await api.post('/vote/submit', voteData);
+      console.log('📊 API: Réponse soumission vote:', response.data);
+      
+      if (response.data.success) {
+        toast.success('Vote enregistré avec succès');
+        return {
+          success: true,
+          data: response.data.data
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.error || 'Erreur lors de l\'enregistrement du vote'
+        };
+      }
+    } catch (error) {
+      console.error('❌ API: Erreur soumission vote:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
       };
     }
   }

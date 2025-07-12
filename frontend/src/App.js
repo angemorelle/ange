@@ -16,7 +16,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 
 // Composants Électeur
 import ElecteurDashboard from './ElecteurPanel/ElecteurDashboard';
-import VotingPage from './pages/VotesPage';
+import VotePage from './pages/VotePage';
 import CandidaturePage from './ElecteurPanel/PostulerCandidat';
 
 // Composants Admin
@@ -39,6 +39,7 @@ import NotFound from './components/common/NotFound';
 
 // Composants élections
 import ElectionCandidats from './pages/ElectionCandidats';
+import ElectionResults from './pages/ElectionResults';
 
 // Context pour l'authentification
 const AuthContext = createContext();
@@ -270,25 +271,36 @@ const AuthProvider = ({ children }) => {
 
   const initializeAuth = async () => {
     try {
+      console.log('🔍 Initialisation de l\'authentification...');
       const token = localStorage.getItem('authToken');
+      console.log('🔑 Token trouvé:', !!token);
+      
       if (token) {
         // Vérifier si le token est encore valide
+        console.log('🔍 Vérification du token...');
         const response = await authService.verifyToken();
+        console.log('📊 Réponse vérification token:', response);
+        
         if (response.success) {
+          console.log('✅ Token valide, utilisateur connecté:', response.user);
           setUser(response.user);
           setIsAuthenticated(true);
         } else {
+          console.log('❌ Token invalide, nettoyage...');
           // Token invalide
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
         }
+      } else {
+        console.log('❌ Aucun token trouvé');
       }
     } catch (error) {
-      console.error('Erreur initialisation auth:', error);
+      console.error('❌ Erreur initialisation auth:', error);
       // Nettoyer en cas d'erreur
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
     } finally {
+      console.log('✅ Fin initialisation auth, loading = false');
       setLoading(false);
     }
   };
@@ -402,7 +414,7 @@ const AppContent = () => {
             {/* Routes Électeur */}
             <Route path="/electeur" element={<ProtectedRoute allowedRoles={['electeur']} />}>
               <Route index element={<ElecteurDashboard />} />
-              <Route path="vote/:electionId" element={<VotingPage />} />
+              <Route path="vote/:electionId" element={<VotePage />} />
               <Route path="candidature" element={<CandidaturePage />} />
             </Route>
 
@@ -425,6 +437,7 @@ const AppContent = () => {
 
             {/* Routes publiques pour les élections */}
             <Route path="/elections/:id/candidats" element={<ElectionCandidats />} />
+            <Route path="/elections/:id/resultats" element={<ElectionResults />} />
 
             {/* Route 404 */}
             <Route path="*" element={<NotFound />} />

@@ -294,4 +294,229 @@ router.get('/elections/current', (req, res) => {
   });
 });
 
+// 🔹 Résultats détaillés d'une élection
+router.get('/elections/:electionId/results', (req, res) => {
+  const electionId = parseInt(req.params.electionId);
+  
+  if (!electionId) {
+    return res.status(400).json({
+      success: false,
+      error: 'ID d\'élection invalide'
+    });
+  }
+
+  const queries = {
+    // Informations de l'élection
+    election: `
+      SELECT 
+        e.id,
+        e.nom,
+        e.description,
+        e.date_ouverture,
+        e.date_fermeture,
+        e.status,
+        p.nom as poste_nom,
+        p.description as poste_description,
+        TIMESTAMPDIFF(HOUR, NOW(), e.date_fermeture) as heures_restantes,
+        CASE 
+          WHEN NOW() < e.date_ouverture THEN 'À venir'
+          WHEN NOW() BETWEEN e.date_ouverture AND e.date_fermeture THEN 'En cours'
+          ELSE 'Terminée'
+        END as statut_temps
+      FROM Elections e
+      LEFT JOIN Poste p ON e.poste_id = p.id
+      WHERE e.id = ?
+    `,
+    
+    // Résultats par candidat
+    candidats_results: `
+      SELECT 
+        c.id,
+        c.programme,
+        c.status as candidat_status,
+        e.nom as electeur_nom,
+        e.email as electeur_email,
+        d.nom as departement_nom,
+        COUNT(b.id) as votes_recus,
+        ROUND(COUNT(b.id) * 100.0 / (
+          SELECT COUNT(*) 
+          FROM Bulletin 
+          WHERE elections_id = ?
+        ), 2) as pourcentage_votes
+      FROM Candidats c
+      JOIN Electeurs e ON c.electeur_id = e.id
+      LEFT JOIN Departement d ON e.departement_id = d.id
+      LEFT JOIN Bulletin b ON c.id = b.candidat_id
+      WHERE c.elections_id = ?
+      GROUP BY c.id, c.programme, c.status, e.nom, e.email, d.nom
+      ORDER BY votes_recus DESC
+    `,
+    
+    // Statistiques générales de l'élection
+    stats_generales: `
+      SELECT 
+        COUNT(DISTINCT c.id) as total_candidats,
+        COUNT(DISTINCT CASE WHEN c.status = 'approuve' THEN c.id END) as candidats_approuves,
+        COUNT(DISTINCT b.id) as total_votes,
+        COUNT(DISTINCT b.electeur_id) as electeurs_ont_vote,
+        (
+          SELECT COUNT(DISTINCT e.id) 
+          FROM Electeurs e 
+          WHERE e.type = 'electeur'
+        ) as total_electeurs_eligibles,
+        ROUND(
+          COUNT(DISTINCT b.electeur_id) * 100.0 / (
+            SELECT COUNT(DISTINCT e.id) 
+            FROM Electeurs e 
+            WHERE e.type = 'electeur'
+          ), 2
+        ) as taux_participation
+      FROM Elections el
+      LEFT JOIN Candidats c ON el.id = c.elections_id
+      LEFT JOIN Bulletin b ON el.id = b.elections_id
+      WHERE el.id = ?
+    `,
+    
+    // Votes par département
+    votes_par_departement: `
+      SELECT 
+        d.nom as departement,
+        COUNT(DISTINCT e.id) as electeurs_eligibles,
+        COUNT(DISTINCT b.electeur_id) as electeurs_ont_vote,
+        ROUND(
+          COUNT(DISTINCT b.electeur_id) * 100.0 / COUNT(DISTINCT e.id), 2
+        ) as taux_participation_dept
+      FROM Departement d
+      LEFT JOIN Electeurs e ON d.id = e.departement_id AND e.type = 'electeur'
+      LEFT JOIN Bulletin b ON e.id = b.electeur_id AND b.elections_id = ?
+      GROUP BY d.id, d.nom
+      HAVING electeurs_eligibles > 0
+      ORDER BY taux_participation_dept DESC
+    `,
+    
+    // Évolution des votes dans le temps (si l'élection est en cours)
+    evolution_votes: `
+      SELECT 
+        DATE(b.vote_timestamp) as date_vote,
+        HOUR(b.vote_timestamp) as heure_vote,
+        COUNT(*) as votes_jour
+      FROM Bulletin b
+      WHERE b.elections_id = ?
+      GROUP BY DATE(b.vote_timestamp), HOUR(b.vote_timestamp)
+      ORDER BY date_vote DESC, heure_vote DESC
+      LIMIT 48
+    `
+  };
+
+  // Exécuter toutes les requêtes en parallèle
+  const promises = [
+    new Promise((resolve, reject) => {
+      db.query(queries.election, [electionId], (err, results) => {
+        if (err) {
+          console.error('Erreur récupération élection:', err);
+          resolve({ election: [] });
+        } else {
+          resolve({ election: results });
+        }
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(queries.candidats_results, [electionId, electionId], (err, results) => {
+        if (err) {
+          console.error('Erreur récupération résultats candidats:', err);
+          resolve({ candidats_results: [] });
+        } else {
+          resolve({ candidats_results: results });
+        }
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(queries.stats_generales, [electionId], (err, results) => {
+        if (err) {
+          console.error('Erreur récupération stats générales:', err);
+          resolve({ stats_generales: [] });
+        } else {
+          resolve({ stats_generales: results });
+        }
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(queries.votes_par_departement, [electionId], (err, results) => {
+        if (err) {
+          console.error('Erreur récupération votes par département:', err);
+          resolve({ votes_par_departement: [] });
+        } else {
+          resolve({ votes_par_departement: results });
+        }
+      });
+    }),
+    new Promise((resolve, reject) => {
+      db.query(queries.evolution_votes, [electionId], (err, results) => {
+        if (err) {
+          console.error('Erreur récupération évolution votes:', err);
+          resolve({ evolution_votes: [] });
+        } else {
+          resolve({ evolution_votes: results });
+        }
+      });
+    })
+  ];
+
+  Promise.all(promises)
+    .then(results => {
+      const data = {};
+      results.forEach(result => {
+        Object.assign(data, result);
+      });
+
+      // Vérifier si l'élection existe
+      if (!data.election || data.election.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Élection non trouvée'
+        });
+      }
+
+      const election = data.election[0];
+      const stats = data.stats_generales[0] || {};
+      
+      // Calculer le gagnant
+      const candidats = data.candidats_results || [];
+      const gagnant = candidats.length > 0 ? candidats[0] : null;
+      
+      // Calculer les métriques supplémentaires
+      const totalVotes = stats.total_votes || 0;
+      const tauxParticipation = stats.taux_participation || 0;
+      
+      const response = {
+        success: true,
+        data: {
+          election: {
+            ...election,
+            peut_afficher_resultats: election.status === 'fermee' || 
+                                   (election.status === 'ouverte' && election.heures_restantes <= 0)
+          },
+          resultats: {
+            candidats: candidats,
+            gagnant: gagnant,
+            total_votes: totalVotes,
+            taux_participation: tauxParticipation,
+            stats_generales: stats,
+            votes_par_departement: data.votes_par_departement || [],
+            evolution_votes: data.evolution_votes || []
+          }
+        }
+      };
+
+      res.json(response);
+    })
+    .catch(error => {
+      console.error('Erreur agrégation résultats:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération des résultats'
+      });
+    });
+});
+
 module.exports = router; 

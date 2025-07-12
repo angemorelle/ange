@@ -384,10 +384,12 @@ const ActivityCard = ({ activities }) => (
   </Zoom>
 );
 
-const ElectionCard = ({ election, onVote, onCandidate, userCandidatures }) => {
+const ElectionCard = ({ election, onVote, onCandidate, userCandidatures, onViewResults }) => {
   const userCandidate = userCandidatures.find(c => c.elections_id === election.id);
   const isCandidate = !!userCandidate;
-  const hasVoted = election.user_has_voted;
+  const hasVoted = Boolean(election.user_has_voted);
+  
+
   
   const getStatusColor = (status) => {
     switch(status) {
@@ -477,12 +479,12 @@ const ElectionCard = ({ election, onVote, onCandidate, userCandidatures }) => {
                 {election.poste_nom}
               </Typography>
             </Box>
-            <Box display="flex" alignItems="center">
-              <Person sx={{ fontSize: 16, mr: 1, color: 'info.main' }} />
-              <Typography variant="body2" color="text.secondary">
-                {election.candidat_count || 0} candidats
-              </Typography>
-            </Box>
+                          <Box display="flex" alignItems="center">
+                <Person sx={{ fontSize: 16, mr: 1, color: 'info.main' }} />
+                <Typography variant="body2" color="text.secondary">
+                  {election.candidat_count || 0} candidat{election.candidat_count > 1 ? 's' : ''}
+                </Typography>
+              </Box>
           </Stack>
 
           {/* Description courte */}
@@ -515,54 +517,89 @@ const ElectionCard = ({ election, onVote, onCandidate, userCandidatures }) => {
                   sx={{ mb: 1, fontWeight: 600 }}
                 />
                 <Typography variant="body2" color="text.secondary">
-                  Merci !
+                  Merci pour votre participation !
                 </Typography>
               </Box>
             ) : (
-              <Stack spacing={1}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => onVote(election.id)}
-                  disabled={election.status !== 'ouverte'}
-                  startIcon={<HowToVote />}
-                  sx={{
-                    background: 'linear-gradient(135deg, #2E73F8 0%, #1E3A8A 100%)',
-                    py: 1,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #1E3A8A 0%, #2E73F8 100%)',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0px 8px 25px rgba(46, 115, 248, 0.4)',
-                    },
-                  }}
-                >
-                  Voter
-                </Button>
+              <Grid container spacing={1}>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={() => onVote(election.id)}
+                    disabled={election.status !== 'ouverte'}
+                    startIcon={<HowToVote />}
+                    sx={{
+                      background: election.status === 'ouverte' 
+                        ? 'linear-gradient(135deg, #2E73F8 0%, #1E3A8A 100%)'
+                        : 'linear-gradient(135deg, #9E9E9E 0%, #757575 100%)',
+                      py: 1,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      '&:hover': election.status === 'ouverte' ? {
+                        background: 'linear-gradient(135deg, #1E3A8A 0%, #2E73F8 100%)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0px 8px 25px rgba(46, 115, 248, 0.4)',
+                      } : {},
+                    }}
+                  >
+                    {election.status === 'ouverte' ? 'Voter' : 'Vote fermé'}
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={() => onCandidate(election.id)}
+                    disabled={election.status !== 'ouverte'}
+                    startIcon={<PersonAdd />}
+                    sx={{
+                      borderColor: election.status === 'ouverte' ? '#FF6B35' : '#9E9E9E',
+                      color: election.status === 'ouverte' ? '#FF6B35' : '#9E9E9E',
+                      py: 1,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      '&:hover': election.status === 'ouverte' ? {
+                        borderColor: '#FF6B35',
+                        backgroundColor: alpha('#FF6B35', 0.1),
+                      } : {},
+                    }}
+                  >
+                    {election.status === 'ouverte' ? 'Candidater' : 'Fermé'}
+                  </Button>
+                </Grid>
+              </Grid>
+            )}
+
+            {/* Bouton pour voir les résultats */}
+            {(election.status === 'fermee' || (election.status === 'ouverte' && hasVoted)) && (
+              <Box mt={2}>
                 <Button
                   fullWidth
                   variant="outlined"
-                  onClick={() => onCandidate(election.id)}
-                  disabled={election.status !== 'ouverte'}
-                  startIcon={<PersonAdd />}
+                  onClick={() => onViewResults(election.id)}
+                  startIcon={<EmojiEvents />}
                   sx={{
-                    borderColor: '#FF6B35',
-                    color: '#FF6B35',
+                    borderColor: '#00C853',
+                    color: '#00C853',
                     py: 1,
                     borderRadius: 2,
                     textTransform: 'none',
                     fontWeight: 600,
+                    fontSize: '0.8rem',
                     '&:hover': {
-                      borderColor: '#FF6B35',
-                      backgroundColor: alpha('#FF6B35', 0.1),
+                      borderColor: '#00C853',
+                      backgroundColor: alpha('#00C853', 0.1),
                     },
                   }}
                 >
-                  Candidater
+                  Voir les résultats
                 </Button>
-              </Stack>
+              </Box>
             )}
           </Box>
 
@@ -624,7 +661,16 @@ const ElecteurDashboard = () => {
       ]);
 
       if (electionsRes.success) {
-        setElections(Array.isArray(electionsRes.data) ? electionsRes.data : []);
+        const electionsData = Array.isArray(electionsRes.data) ? electionsRes.data : [];
+        // Convertir les valeurs numériques en boolean pour user_has_voted
+        const processedElections = electionsData.map(election => ({
+          ...election,
+          user_has_voted: Boolean(election.user_has_voted),
+          candidat_count: parseInt(election.candidat_count) || 0
+        }));
+        setElections(processedElections);
+        
+
       }
 
       if (candidaturesRes.success) {
@@ -714,63 +760,25 @@ const ElecteurDashboard = () => {
     }
   };
 
-  const handleVote = async (electionId) => {
-    try {
-      const response = await electeurService.voterElection(electionId);
-      if (response.success) {
-        toast.success('Vote enregistré avec succès!');
-        loadDashboardData();
-        
-        setActivities(prev => [{
-          title: 'Vote enregistré',
-          description: 'Vote blockchain',
-          time: 'Maintenant',
-          icon: <HowToVote />,
-          color: '#E8F5E8',
-          textColor: '#2E7D32'
-        }, ...prev]);
-      } else {
-        toast.error(response.error || 'Erreur lors du vote');
-      }
-    } catch (err) {
-      console.error('Erreur vote:', err);
-      toast.error('Erreur lors du vote: ' + (err.response?.data?.error || err.message));
-    }
+  const handleVote = (electionId) => {
+    navigate(`/electeur/vote/${electionId}`);
   };
 
-  const handleCandidater = async (electionId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir vous porter candidat à cette élection ?')) {
-      return;
-    }
+  const handleCandidater = (electionId) => {
+    navigate('/electeur/candidature', { state: { electionId } });
+  };
 
-    try {
-      const response = await electeurService.postulerCandidat(electionId);
-      if (response.success) {
-        toast.success('Candidature soumise avec succès!');
-        loadDashboardData();
-        
-        setActivities(prev => [{
-          title: 'Candidature soumise',
-          description: 'En attente de validation',
-          time: 'Maintenant',
-          icon: <PersonAdd />,
-          color: '#FFF3E0',
-          textColor: '#F57C00'
-        }, ...prev]);
-      } else {
-        toast.error(response.error || 'Erreur lors de la candidature');
-      }
-    } catch (err) {
-      console.error('Erreur candidature:', err);
-      toast.error('Erreur lors de la candidature: ' + (err.response?.data?.error || err.message));
-    }
+  const handleViewResults = (electionId) => {
+    navigate(`/elections/${electionId}/resultats`);
   };
 
   const getStats = () => {
-    const votesEffectues = elections.filter(e => e.user_has_voted).length;
+    const votesEffectues = elections.filter(e => Boolean(e.user_has_voted)).length;
     const candidaturesTotal = candidatures.length;
     const electionsActives = elections.filter(e => e.status === 'ouverte').length;
-    const tauxParticipation = elections.length > 0 ? Math.round((votesEffectues / elections.length) * 100) : 87;
+    const tauxParticipation = elections.length > 0 ? Math.round((votesEffectues / elections.length) * 100) : 0;
+    
+
     
     return {
       votesEffectues,
@@ -992,6 +1000,7 @@ const ElecteurDashboard = () => {
                     onVote={handleVote}
                     onCandidate={handleCandidater}
                     userCandidatures={candidatures}
+                    onViewResults={handleViewResults}
                   />
                 </Grid>
               ))}
