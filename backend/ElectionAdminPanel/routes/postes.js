@@ -4,39 +4,83 @@ const db = require('../db');
 
 // 🔹 Lister tous les postes
 router.get('/', (req, res) => {
-  db.query("SELECT * FROM Poste", (err, results) => {
+  const sql = "SELECT * FROM Poste ORDER BY nom ASC";
+  db.query(sql, (err, results) => {
     if (err) {
       console.error("Erreur lors de la récupération des postes :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message,
+        data: []
+      });
     }
-    res.json(results);
+    res.json({
+      success: true,
+      data: results,
+      count: results.length
+    });
   });
 });
 
 // 🔹 Ajouter un poste
 router.post('/', (req, res) => {
-  const { nom } = req.body;
-  if (!nom) return res.status(400).json({ error: "Le nom du poste est requis" });
-
-  db.query("INSERT INTO Poste (nom) VALUES (?)", [nom], (err, result) => {
+  const { nom, description } = req.body;
+  
+  if (!nom) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "Le nom du poste est obligatoire" 
+    });
+  }
+  
+  const sql = "INSERT INTO Poste (nom, description) VALUES (?, ?)";
+  db.query(sql, [nom, description], (err, result) => {
     if (err) {
-      console.error("Erreur lors de l’ajout :", err);
-      return res.status(500).json({ error: err.message });
+      console.error("Erreur ajout poste :", err);
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
     }
-    res.status(201).json({ message: "Poste ajouté", id: result.insertId });
+    res.status(201).json({ 
+      success: true,
+      message: "Poste ajouté avec succès", 
+      data: { id: result.insertId }
+    });
   });
 });
 
 // 🔹 Supprimer un poste
 router.delete('/:id', (req, res) => {
   const id = req.params.id;
-
+  
+  if (!id) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "ID poste manquant" 
+    });
+  }
+  
   db.query("DELETE FROM Poste WHERE id = ?", [id], (err, result) => {
     if (err) {
-      console.error("Erreur lors de la suppression :", err);
-      return res.status(500).json({ error: err.message });
+      console.error("Erreur suppression poste :", err);
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
     }
-    res.json({ message: "Poste supprimé" });
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Poste non trouvé" 
+      });
+    }
+    
+    res.json({ 
+      success: true,
+      message: "Poste supprimé avec succès" 
+    });
   });
 });
 

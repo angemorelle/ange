@@ -5,37 +5,58 @@ const db = require('../db');
 // 🔹 Lister tous les électeurs
 router.get('/', (req, res) => {
   const sql = `
-    SELECT Electeurs.*, Departement.nom AS departement_nom, Elections.nom AS election_nom
+    SELECT Electeurs.*, Departement.nom AS departement_nom
     FROM Electeurs
     LEFT JOIN Departement ON Electeurs.departement_id = Departement.id
-    LEFT JOIN Elections ON Electeurs.elections_id = Elections.id
     ORDER BY Electeurs.id DESC
   `;
   db.query(sql, (err, results) => {
     if (err) {
       console.error("Erreur récupération électeurs :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message,
+        data: []
+      });
     }
-    res.json(results);
+    res.json({
+      success: true,
+      data: results,
+      count: results.length
+    });
   });
 });
 
 // 🔹 Ajouter un électeur
 router.post('/', (req, res) => {
-  const { nom, email, pwd, tel, profession, type, departement_id, elections_id } = req.body;
+  const { nom, email, pwd, tel, profession, type, departement_id } = req.body;
+
+  if (!nom || !email || !pwd || !departement_id) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "Champs obligatoires manquants (nom, email, mot de passe, département)" 
+    });
+  }
 
   const sql = `
     INSERT INTO Electeurs
-    (nom, email, pwd, tel, profession, type, departement_id, elections_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    (nom, email, pwd, tel, profession, type, departement_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
-  const values = [nom, email, pwd, tel, profession, type, departement_id, elections_id];
+  const values = [nom, email, pwd, tel, profession, type || 'electeur', departement_id];
   db.query(sql, values, (err, result) => {
     if (err) {
       console.error("Erreur ajout électeur :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
     }
-    res.status(201).json({ message: "Électeur ajouté", id: result.insertId });
+    res.status(201).json({ 
+      success: true,
+      message: "Électeur ajouté avec succès", 
+      data: { id: result.insertId }
+    });
   });
 });
 
@@ -43,12 +64,33 @@ router.post('/', (req, res) => {
 router.delete('/:id', (req, res) => {
   const id = req.params.id;
 
-  db.query("DELETE FROM Electeurs WHERE id = ?", [id], (err) => {
+  if (!id) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "ID électeur manquant" 
+    });
+  }
+
+  db.query("DELETE FROM Electeurs WHERE id = ?", [id], (err, result) => {
     if (err) {
       console.error("Erreur suppression électeur :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
     }
-    res.json({ message: "Électeur supprimé" });
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Électeur non trouvé" 
+      });
+    }
+    
+    res.json({ 
+      success: true,
+      message: "Électeur supprimé avec succès" 
+    });
   });
 });
 

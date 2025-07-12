@@ -126,7 +126,7 @@ CREATE TABLE Blockchain_Sync (
 CREATE TABLE User_Sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    user_type ENUM('electeur', 'superviseur') NOT NULL,
+    user_type ENUM('electeur', 'superviseur', 'admin') NOT NULL,
     session_token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -160,9 +160,9 @@ INSERT INTO Poste (nom, description) VALUES
 
 -- Mot de passe "password123" hashé avec bcrypt
 INSERT INTO Electeurs (nom, email, pwd, tel, profession, type, departement_id) VALUES 
-('Admin Système', 'admin@election.com', '$2b$10$rONUjxJQ.VjTjvONzJJ.6eRjZjqTBJgR8Zj7VQNjJQ.VjTjvONzJJ', '0123456789', 'Administrateur', 'admin', 1),
-('Jean Dupont', 'jean.dupont@email.com', '$2b$10$rONUjxJQ.VjTjvONzJJ.6eRjZjqTBJgR8Zj7VQNjJQ.VjTjvONzJJ', '0123456788', 'Ingénieur', 'electeur', 1),
-('Marie Martin', 'marie.martin@email.com', '$2b$10$rONUjxJQ.VjTjvONzJJ.6eRjZjqTBJgR8Zj7VQNjJQ.VjTjvONzJJ', '0123456787', 'Professeur', 'electeur', 2);
+('Admin Système', 'admin@election.com', '$2b$12$URrRbjeXTI9HdlCjh7SgHei0x3pax/tWH0NsE/fN0lJAlzwYUY7ky', '0123456789', 'Administrateur', 'admin', 1),
+('Jean Dupont', 'jean.dupont@email.com', '$2b$12$URrRbjeXTI9HdlCjh7SgHei0x3pax/tWH0NsE/fN0lJAlzwYUY7ky', '0123456788', 'Ingénieur', 'electeur', 1),
+('Marie Martin', 'marie.martin@email.com', '$2b$12$URrRbjeXTI9HdlCjh7SgHei0x3pax/tWH0NsE/fN0lJAlzwYUY7ky', '0123456787', 'Professeur', 'electeur', 2);
 
 INSERT INTO Superviseur (nom, email, pwd, tel, profession, departement_id) VALUES 
-('Pierre Superviseur', 'pierre.sup@election.com', '$2b$10$rONUjxJQ.VjTjvONzJJ.6eRjZjqTBJgR8Zj7VQNjJQ.VjTjvONzJJ', '0123456786', 'Superviseur Electoral', 1);
+('Pierre Superviseur', 'pierre.sup@election.com', '$2b$12$URrRbjeXTI9HdlCjh7SgHei0x3pax/tWH0NsE/fN0lJAlzwYUY7ky', '0123456786', 'Superviseur Electoral', 1);

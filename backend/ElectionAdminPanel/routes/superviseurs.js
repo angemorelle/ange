@@ -13,15 +13,30 @@ router.get('/', (req, res) => {
   db.query(sql, (err, results) => {
     if (err) {
       console.error("Erreur récupération superviseurs :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message,
+        data: []
+      });
     }
-    res.json(results);
+    res.json({
+      success: true,
+      data: results,
+      count: results.length
+    });
   });
 });
 
 // 🔹 Ajouter un superviseur
 router.post('/', (req, res) => {
   const { nom, email, pwd, tel, profession, departement_id } = req.body;
+
+  if (!nom || !email || !pwd || !departement_id) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "Champs obligatoires manquants (nom, email, mot de passe, département)" 
+    });
+  }
 
   const sql = `
     INSERT INTO Superviseur (nom, email, pwd, tel, profession, departement_id)
@@ -31,9 +46,16 @@ router.post('/', (req, res) => {
   db.query(sql, values, (err, result) => {
     if (err) {
       console.error("Erreur ajout superviseur :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
     }
-    res.status(201).json({ message: "Superviseur ajouté", id: result.insertId });
+    res.status(201).json({ 
+      success: true,
+      message: "Superviseur ajouté avec succès", 
+      data: { id: result.insertId }
+    });
   });
 });
 
@@ -41,12 +63,33 @@ router.post('/', (req, res) => {
 router.delete('/:id', (req, res) => {
   const id = req.params.id;
 
-  db.query("DELETE FROM Superviseur WHERE id = ?", [id], (err) => {
+  if (!id) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "ID superviseur manquant" 
+    });
+  }
+
+  db.query("DELETE FROM Superviseur WHERE id = ?", [id], (err, result) => {
     if (err) {
       console.error("Erreur suppression superviseur :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
     }
-    res.json({ message: "Superviseur supprimé" });
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Superviseur non trouvé" 
+      });
+    }
+    
+    res.json({ 
+      success: true,
+      message: "Superviseur supprimé avec succès" 
+    });
   });
 });
 

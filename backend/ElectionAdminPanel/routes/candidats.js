@@ -10,19 +10,54 @@ const db = require('../db');
 
 // 🔹 Liste des candidats
 router.get('/', (req, res) => {
-  const sql = `
+  const { elections_id, status, electeur_id } = req.query;
+  
+  let sql = `
     SELECT Candidats.*, Electeurs.nom AS electeur_nom, Elections.nom AS election_nom
     FROM Candidats
     JOIN Electeurs ON Candidats.electeur_id = Electeurs.id
     JOIN Elections ON Candidats.elections_id = Elections.id
-    ORDER BY Candidats.id DESC
   `;
-  db.query(sql, (err, results) => {
+  
+  const conditions = [];
+  const params = [];
+  
+  if (elections_id) {
+    conditions.push('Candidats.elections_id = ?');
+    params.push(elections_id);
+  }
+  
+  if (status) {
+    conditions.push('Candidats.status = ?');
+    params.push(status);
+  }
+  
+  if (electeur_id) {
+    conditions.push('Candidats.electeur_id = ?');
+    params.push(electeur_id);
+  }
+  
+  if (conditions.length > 0) {
+    sql += ' WHERE ' + conditions.join(' AND ');
+  }
+  
+  sql += ' ORDER BY Candidats.id DESC';
+  
+  db.query(sql, params, (err, results) => {
     if (err) {
       console.error("Erreur récupération candidats :", err);
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message,
+        data: []
+      });
     }
-    res.json(results);
+    
+    res.json({
+      success: true,
+      data: results,
+      count: results.length 
+    });
   });
 });
 

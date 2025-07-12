@@ -74,89 +74,56 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-// 🔹 Récupérer toutes les élections (Public pour voir la liste)
-router.get('/', async (req, res) => {
-  try {
-    const { status, limit = 20, offset = 0 } = req.query;
-    
-    let whereClause = '';
-    let params = [];
-    
-    if (status === 'active') {
-      whereClause = 'WHERE NOW() BETWEEN Elections.date_ouverture AND Elections.date_fermeture';
-    } else if (status === 'upcoming') {
-      whereClause = 'WHERE Elections.date_ouverture > NOW()';
-    } else if (status === 'closed') {
-      whereClause = 'WHERE Elections.date_fermeture < NOW()';
-    }
-
-    const sql = `
-      SELECT 
-        Elections.*,
-        Poste.nom AS poste_nom,
-        Poste.description AS poste_description,
-        COUNT(DISTINCT Candidats.id) AS nombre_candidats,
-        COUNT(DISTINCT Bulletin.id) AS nombre_votes,
-        CASE 
-          WHEN NOW() < Elections.date_ouverture THEN 'upcoming'
-          WHEN NOW() BETWEEN Elections.date_ouverture AND Elections.date_fermeture THEN 'active'
-          ELSE 'closed'
-        END AS statut
-      FROM Elections
-      LEFT JOIN Poste ON Elections.poste_id = Poste.id
-      LEFT JOIN Candidats ON Elections.id = Candidats.elections_id AND Candidats.statut = 'approuve'
-      LEFT JOIN Bulletin ON Elections.id = Bulletin.elections_id
-      ${whereClause}
-      GROUP BY Elections.id, Poste.id
-      ORDER BY Elections.date_ouverture DESC
-      LIMIT ? OFFSET ?
-    `;
-
-    db.query(sql, [...params, parseInt(limit), parseInt(offset)], (err, results) => {
-      if (err) {
-        console.error('Erreur récupération élections:', err);
-        return res.status(500).json({
-          success: false,
-          error: 'Erreur lors de la récupération des élections'
-        });
-      }
-
-      // Compter le total pour la pagination
-      const countSql = `
-        SELECT COUNT(*) as total 
-        FROM Elections 
-        LEFT JOIN Poste ON Elections.poste_id = Poste.id
-        ${whereClause}
-      `;
-
-      db.query(countSql, params, (countErr, countResults) => {
-        if (countErr) {
-          console.error('Erreur comptage élections:', countErr);
-          return res.status(500).json({
-            success: false,
-            error: 'Erreur lors du comptage'
-          });
-        }
-
-        res.json({
-          success: true,
-          data: results,
-          pagination: {
-            total: countResults[0].total,
-            limit: parseInt(limit),
-            offset: parseInt(offset),
-            hasMore: (parseInt(offset) + parseInt(limit)) < countResults[0].total
-          }
-        });
-      });
-    });
-  } catch (error) {
-    console.error('Erreur route élections:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur serveur'
-    });
+// 🔹 Récupérer toutes les élections
+router.get('/', (req, res) => {
+  const { limit, offset, status } = req.query;
+  
+  let sql = `
+    SELECT Elections.*, Poste.nom AS poste_nom 
+    FROM Elections 
+    LEFT JOIN Poste ON Elections.poste_id = Poste.id
+  `;
+  
+  const conditions = [];
+  const params = [];
+  
+  if (status) {
+    conditions.push('Elections.statut = ?');
+    params.push(status);
   }
+  
+  if (conditions.length > 0) {
+    sql += ' WHERE ' + conditions.join(' AND ');
+  }
+  
+  sql += ' ORDER BY Elections.date_ouverture DESC';
+  
+  if (limit) {
+    sql += ' LIMIT ?';
+    params.push(parseInt(limit));
+    
+    if (offset) {
+      sql += ' OFFSET ?';
+      params.push(parseInt(offset));
+    }
+  }
+  
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error('Erreur récupération élections:', err);
+      return res.status(500).json({ 
+        success: false, 
+        error: err.message,
+        data: []
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: results,
+      count: results.length
+    });
+  });
 });
 
 // 🔹 Récupérer une élection spécifique
@@ -177,7 +144,7 @@ router.get('/:id', validateElectionId, handleValidationErrors, (req, res) => {
       END AS statut
     FROM Elections
     LEFT JOIN Poste ON Elections.poste_id = Poste.id
-    LEFT JOIN Candidats ON Elections.id = Candidats.elections_id AND Candidats.statut = 'approuve'
+    LEFT JOIN Candidats ON Elections.id = Candidats.elections_id AND Candidats.status = 'approuve'
     LEFT JOIN Bulletin ON Elections.id = Bulletin.elections_id
     WHERE Elections.id = ?
     GROUP BY Elections.id, Poste.id
@@ -218,7 +185,7 @@ router.post('/',
       const created_by = req.user.id;
 
       const sql = `
-        INSERT INTO Elections (nom, description, date_ouverture, date_fermeture, poste_id, created_by, statut)
+        INSERT INTO Elections (nom, description, date_ouverture, date_fermeture, poste_id, created_by, status)
         VALUES (?, ?, ?, ?, ?, ?, 'planifiee')
       `;
 
@@ -253,7 +220,7 @@ router.post('/',
           data: {
             id: result.insertId,
             nom,
-            statut: 'planifiee'
+            status: 'planifiee'
           }
         });
       });
@@ -280,7 +247,7 @@ router.put('/:id',
 
     // Vérifier que l'élection peut être modifiée
     const checkSql = `
-      SELECT statut, date_ouverture 
+      SELECT status, date_ouverture 
       FROM Elections 
       WHERE id = ? AND date_ouverture > NOW()
     `;
@@ -413,7 +380,7 @@ router.get('/:id/resultats', validateElectionId, handleValidationErrors, (req, r
 
   // Vérifier que l'élection est fermée
   const checkSql = `
-    SELECT nom, date_fermeture, statut
+    SELECT nom, date_fermeture, status
     FROM Elections 
     WHERE id = ? AND date_fermeture < NOW()
   `;
@@ -450,7 +417,7 @@ router.get('/:id/resultats', validateElectionId, handleValidationErrors, (req, r
       FROM Candidats c
       JOIN Electeurs e ON c.electeur_id = e.id
       LEFT JOIN Bulletin b ON c.id = b.candidat_id
-      WHERE c.elections_id = ? AND c.statut = 'approuve'
+      WHERE c.elections_id = ? AND c.status = 'approuve'
       GROUP BY c.id, c.nom, c.programme, e.nom, e.prenom
       ORDER BY nombre_votes DESC
     `;

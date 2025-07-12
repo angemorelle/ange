@@ -1,5 +1,22 @@
 {
+  "name": "election-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts pour le système électoral",
+  "scripts": {
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "test": "truffle test",
+    "console": "truffle console",
+    "migrate:reset": "truffle migrate --reset"
+  },
   "dependencies": {
     "web3": "^4.16.0"
+  },
+  "devDependencies": {
+    "truffle": "^5.11.5",
+    "@truffle/hdwallet-provider": "^2.1.15"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

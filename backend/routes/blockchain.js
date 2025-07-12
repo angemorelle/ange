@@ -14,8 +14,8 @@ class BlockchainService {
 
   async init() {
     try {
-      // Initialisation Web3 (à adapter selon votre configuration)
-      const Web3 = require('web3');
+      // Initialisation Web3 v4.x (nouvelle syntaxe d'import)
+      const { Web3 } = require('web3');
       this.web3 = new Web3(process.env.ETHEREUM_RPC_URL || 'http://localhost:7545');
       
       // Chargement du contrat

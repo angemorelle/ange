@@ -1,190 +1,41 @@
-// // import React, { useState } from 'react';
-// // import axios from 'axios';
-
-// // const Register = () => {
-// //   const [form, setForm] = useState({
-// //     nom: "", email: "", pwd: "", tel: "", profession: "", departement_id: ""
-// //   });
-
-// //   const handleChange = (e) => {
-// //     setForm({...form, [e.target.name]: e.target.value });
-// //   };
-
-// //   const handleSubmit = async (e) => {
-// //     e.preventDefault();
-// //     try {
-// //       await axios.post("http://localhost:3001/api/register", form);
-// //       alert("Inscription réussie !");
-// //     } catch (err) {
-// //       console.error(err);
-// //       alert("Erreur à l'inscription.");
-// //     }
-// //   };
-
-// //   return (
-// //     <form onSubmit={handleSubmit} className="p-6 max-w-md mx-auto">
-// //       <h2 className="text-xl font-bold mb-4">Inscription</h2>
-// //       {["nom", "email", "pwd", "tel", "profession", "departement_id"].map(field => (
-// //         <input
-// //           key={field}
-// //           name={field}
-// //           placeholder={field}
-// //           type={field === "pwd" ? "password" : "text"}
-// //           value={form[field]}
-// //           onChange={handleChange}
-// //           className="block w-full mb-3 p-2 border rounded"
-// //           required
-// //         />
-// //       ))}
-// //       <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">
-// //         S’inscrire
-// //       </button>
-// //     </form>
-// //   );
-// // };
-
-// // export default Register;
-
-// // import React, { useState } from 'react';
-// // import axios from 'axios';
-
-// // const Register = () => {
-// //   const [form, setForm] = useState({
-// //     nom: "", email: "", pwd: "", tel: "", profession: "", departement_id: ""
-// //   });
-
-// //   const handleChange = (e) => {
-// //     setForm({...form, [e.target.name]: e.target.value });
-// //   };
-
-// //   const handleSubmit = async (e) => {
-// //     e.preventDefault();
-// //     try {
-// //       await axios.post("http://localhost:3001/api/register", form);
-// //       alert("Inscription réussie !");
-// //     } catch (err) {
-// //       console.error(err);
-// //       alert("Erreur à l'inscription.");
-// //     }
-// //   };
-
-// //   return (
-// //     <form onSubmit={handleSubmit} className="p-6 max-w-md mx-auto">
-// //       <h2 className="text-xl font-bold mb-4">Inscription</h2>
-// //       {["nom", "email", "pwd", "tel", "profession", "departement_id"].map(field => (
-// //         <input
-// //           key={field}
-// //           name={field}
-// //           placeholder={field}
-// //           type={field === "pwd" ? "password" : "text"}
-// //           value={form[field]}
-// //           onChange={handleChange}
-// //           className="block w-full mb-3 p-2 border rounded"
-// //           required
-// //         />
-// //       ))}
-// //       <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">
-// //         S’inscrire
-// //       </button>
-// //     </form>
-// //   );
-// // };
-
-// // export default Register;
-
-// import React, { useState, useEffect } from 'react';
-// import axios from 'axios';
-
-// const Register = () => {
-//   const [form, setForm] = useState({
-//     nom: "", email: "", pwd: "", tel: "", profession: "", departement_id: ""
-//   });
-//   const [departements, setDepartements] = useState([]);
-
-//   useEffect(() => {
-//     // Charger la liste des départements depuis le backend
-//     const fetchDepartements = async () => {
-//       try {
-//         const res = await axios.get("http://localhost:3001/api/departements");
-//         setDepartements(res.data);
-//       } catch (err) {
-//         console.error("Erreur lors du chargement des départements", err);
-//       }
-//     };
-
-//     fetchDepartements();
-//   }, []);
-
-//   const handleChange = (e) => {
-//     setForm({...form, [e.target.name]: e.target.value });
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     try {
-//       await axios.post("http://localhost:3001/api/register", form);
-//       alert("Inscription réussie !");
-//     } catch (err) {
-//       console.error(err);
-//       alert("Erreur à l'inscription.");
-//     }
-//   };
-
-//   return (
-//     <form onSubmit={handleSubmit} className="p-6 max-w-md mx-auto">
-//       <h2 className="text-xl font-bold mb-4">Inscription électeur</h2>
-
-//       <input name="nom" placeholder="Nom" value={form.nom} onChange={handleChange} required className="w-full mb-3 p-2 border rounded" />
-//       <input name="email" placeholder="Email" value={form.email} onChange={handleChange} required className="w-full mb-3 p-2 border rounded" />
-//       <input name="pwd" type="password" placeholder="Mot de passe" value={form.pwd} onChange={handleChange} required className="w-full mb-3 p-2 border rounded" />
-//       <input name="tel" placeholder="Téléphone" value={form.tel} onChange={handleChange} className="w-full mb-3 p-2 border rounded" />
-//       <input name="profession" placeholder="Profession" value={form.profession} onChange={handleChange} className="w-full mb-3 p-2 border rounded" />
-
-//       <select
-//         name="departement_id"
-//         value={form.departement_id}
-//         onChange={handleChange}
-//         required
-//         className="w-full mb-4 p-2 border rounded"
-//       >
-//         <option value="">-- Choisir un département --</option>
-//         {departements.map(dep => (
-//           <option key={dep.id} value={dep.id}>
-//             {dep.nom}
-//           </option>
-//         ))}
-//       </select>
-
-//       <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded">
-//         S’inscrire
-//       </button>
-//     </form>
-//   );
-// };
-
-// export default Register;
-import 'bootstrap/dist/css/bootstrap.min.css';
-
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import { adminService } from '../services/api';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const Register = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     nom: "", email: "", pwd: "", tel: "", profession: "", departement_id: ""
   });
   const [departements, setDepartements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const loadDepartements = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await adminService.getDepartements();
+      
+      if (response.success) {
+        setDepartements(Array.isArray(response.data) ? response.data : []);
+      } else {
+        console.error('Erreur départements:', response.error);
+        setDepartements([]);
+        toast.error('Erreur lors du chargement des départements');
+      }
+    } catch (err) {
+      console.error("Erreur lors du chargement des départements", err);
+      setDepartements([]);
+      toast.error('Erreur lors du chargement des départements');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchDepartements = async () => {
-      try {
-        const res = await axios.get("http://localhost:3001/api/departements");
-        setDepartements(res.data);
-      } catch (err) {
-        console.error("Erreur lors du chargement des départements", err);
-      }
-    };
-    fetchDepartements();
-  }, []);
+    loadDepartements();
+  }, [loadDepartements]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -192,67 +43,215 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!form.nom || !form.email || !form.pwd || !form.departement_id) {
+      toast.error("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
     try {
-      await axios.post("http://localhost:3001/api/register", form);
-      alert("Inscription réussie !");
+      setSubmitting(true);
+      const response = await adminService.addElecteur(form);
+      
+      if (response.success) {
+        toast.success("Inscription réussie ! Vous pouvez maintenant vous connecter.");
+        navigate('/login');
+      } else {
+        toast.error(response.error || "Erreur lors de l'inscription");
+      }
     } catch (err) {
       console.error(err);
-      alert("Erreur à l'inscription.");
+      toast.error("Erreur lors de l'inscription: " + (err.response?.data?.error || err.message));
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Chargement...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="d-flex flex-column min-vh-100" style={{ backgroundColor: "#f1f1f1" }}>
+    <div className="d-flex flex-column min-vh-100" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       {/* HEADER */}
       <header>
-        <nav className="navbar navbar-expand-lg" style={{ backgroundColor: "#6c9eff" }}>
-          <div className="container justify-content-center">
-            <span className="navbar-brand text-white fs-3 fw-bold">Election</span>
+        <nav className="navbar navbar-expand-lg navbar-dark" style={{ backgroundColor: 'rgba(0,0,0,0.1)' }}>
+          <div className="container">
+            <span className="navbar-brand fs-3 fw-bold">
+              🗳️ ElectionDapp
+            </span>
+            <button 
+              className="btn btn-outline-light btn-sm"
+              onClick={() => navigate('/login')}
+            >
+              Se connecter
+            </button>
           </div>
         </nav>
       </header>
 
-      {/* FORMULAIRE */}
-      <main className="flex-fill">
-        <div className="container mt-5">
+      {/* MAIN CONTENT */}
+      <main className="flex-fill d-flex align-items-center">
+        <div className="container">
           <div className="row justify-content-center">
-            <div className="col-md-6">
-              <div className="card shadow p-4">
-                <h2 className="mb-4 text-center">Inscription Électeur</h2>
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-3">
-                    <label>Nom</label>
-                    <input type="text" name="nom" className="form-control" value={form.nom} onChange={handleChange} required />
+            <div className="col-lg-6 col-md-8">
+              <div className="card shadow-lg border-0" style={{ borderRadius: '20px' }}>
+                <div className="card-body p-5">
+                  <div className="text-center mb-4">
+                    <div className="mb-3">
+                      <span style={{ fontSize: '3rem' }}>👤</span>
+                    </div>
+                    <h2 className="fw-bold text-dark mb-2">Créer un compte</h2>
+                    <p className="text-muted">Rejoignez la plateforme électorale sécurisée</p>
                   </div>
-                  <div className="mb-3">
-                    <label>Email</label>
-                    <input type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
-                  </div>
-                  <div className="mb-3">
-                    <label>Mot de passe</label>
-                    <input type="password" name="pwd" className="form-control" value={form.pwd} onChange={handleChange} required />
-                  </div>
-                  <div className="mb-3">
-                    <label>Téléphone</label>
-                    <input type="text" name="tel" className="form-control" value={form.tel} onChange={handleChange} />
-                  </div>
-                  <div className="mb-3">
-                    <label>Profession</label>
-                    <input type="text" name="profession" className="form-control" value={form.profession} onChange={handleChange} />
-                  </div>
-                  <div className="mb-4">
-                    <label>Département</label>
-                    <select name="departement_id" className="form-select" value={form.departement_id} onChange={handleChange} required>
-                      <option value="">-- Choisir un département --</option>
-                      {departements.map(dep => (
-                        <option key={dep.id} value={dep.id}>{dep.nom}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="text-center">
-                    <button type="submit" className="btn btn-success w-100">S’inscrire</button>
-                  </div>
-                </form>
+
+                  <form onSubmit={handleSubmit}>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <div className="form-floating">
+                          <input 
+                            type="text" 
+                            name="nom" 
+                            className="form-control" 
+                            id="nom"
+                            placeholder="Nom complet"
+                            value={form.nom} 
+                            onChange={handleChange} 
+                            required 
+                          />
+                          <label htmlFor="nom">Nom complet *</label>
+                        </div>
+                      </div>
+                      
+                      <div className="col-md-6">
+                        <div className="form-floating">
+                          <input 
+                            type="email" 
+                            name="email" 
+                            className="form-control" 
+                            id="email"
+                            placeholder="Email"
+                            value={form.email} 
+                            onChange={handleChange} 
+                            required 
+                          />
+                          <label htmlFor="email">Adresse email *</label>
+                        </div>
+                      </div>
+
+                      <div className="col-12">
+                        <div className="form-floating">
+                          <input 
+                            type="password" 
+                            name="pwd" 
+                            className="form-control" 
+                            id="pwd"
+                            placeholder="Mot de passe"
+                            value={form.pwd} 
+                            onChange={handleChange} 
+                            required 
+                            minLength="6"
+                          />
+                          <label htmlFor="pwd">Mot de passe *</label>
+                        </div>
+                      </div>
+
+                      <div className="col-md-6">
+                        <div className="form-floating">
+                          <input 
+                            type="tel" 
+                            name="tel" 
+                            className="form-control" 
+                            id="tel"
+                            placeholder="Téléphone"
+                            value={form.tel} 
+                            onChange={handleChange} 
+                          />
+                          <label htmlFor="tel">Téléphone</label>
+                        </div>
+                      </div>
+
+                      <div className="col-md-6">
+                        <div className="form-floating">
+                          <input 
+                            type="text" 
+                            name="profession" 
+                            className="form-control" 
+                            id="profession"
+                            placeholder="Profession"
+                            value={form.profession} 
+                            onChange={handleChange} 
+                          />
+                          <label htmlFor="profession">Profession</label>
+                        </div>
+                      </div>
+
+                      <div className="col-12">
+                        <div className="form-floating">
+                          <select 
+                            name="departement_id" 
+                            className="form-select" 
+                            id="departement"
+                            value={form.departement_id} 
+                            onChange={handleChange} 
+                            required
+                          >
+                            <option value="">Choisir un département</option>
+                            {Array.isArray(departements) && departements.map(dep => (
+                              <option key={dep.id} value={dep.id}>
+                                {dep.nom}
+                              </option>
+                            ))}
+                          </select>
+                          <label htmlFor="departement">Département *</label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="d-grid gap-2 mt-4">
+                      <button 
+                        type="submit" 
+                        className="btn btn-lg fw-bold text-white"
+                        style={{ 
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          border: 'none'
+                        }}
+                        disabled={submitting}
+                      >
+                        {submitting ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Inscription en cours...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-user-plus me-2"></i>
+                            Créer mon compte
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="text-center mt-3">
+                      <small className="text-muted">
+                        Déjà inscrit ? 
+                        <button 
+                          type="button"
+                          className="btn btn-link btn-sm p-0 ms-1"
+                          onClick={() => navigate('/login')}
+                        >
+                          Se connecter
+                        </button>
+                      </small>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
@@ -260,9 +259,11 @@ const Register = () => {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-dark text-white text-center py-3 mt-4">
+      <footer className="bg-dark bg-opacity-75 text-white text-center py-3">
         <div className="container">
-          &copy; {new Date().getFullYear()} Election - Tous droits réservés.
+          <small>
+            &copy; {new Date().getFullYear()} ElectionDapp - Plateforme électorale sécurisée par blockchain
+          </small>
         </div>
       </footer>
     </div>

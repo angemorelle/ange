@@ -88,7 +88,7 @@ const validateLogin = [
     .notEmpty()
     .withMessage('Mot de passe requis'),
   body('userType')
-    .isIn(['electeur', 'superviseur'])
+    .isIn(['electeur', 'superviseur', 'admin'])
     .withMessage('Type d\'utilisateur invalide')
 ];
 
@@ -109,12 +109,25 @@ const authService = {
   async login(email, password, userType) {
     try {
       // Déterminer la table à utiliser
-      const table = userType === 'electeur' ? 'Electeurs' : 'Superviseur';
+      // Les électeurs et admins sont dans la table Electeurs
+      // Les superviseurs sont dans la table Superviseur
+      const table = (userType === 'electeur' || userType === 'admin') ? 'Electeurs' : 'Superviseur';
       
-      const sql = `SELECT * FROM ${table} WHERE email = ? AND is_active = TRUE`;
+      // Pour les admins, vérifier aussi le champ 'type' dans la table Electeurs
+      let sql, queryParams;
+      if (userType === 'admin') {
+        sql = `SELECT * FROM ${table} WHERE email = ? AND type = 'admin' AND is_active = TRUE`;
+        queryParams = [email];
+      } else if (userType === 'electeur') {
+        sql = `SELECT * FROM ${table} WHERE email = ? AND type = 'electeur' AND is_active = TRUE`;
+        queryParams = [email];
+      } else {
+        sql = `SELECT * FROM ${table} WHERE email = ? AND is_active = TRUE`;
+        queryParams = [email];
+      }
       
-      return new Promise((resolve, reject) => {
-        db.query(sql, [email], async (err, results) => {
+              return new Promise((resolve, reject) => {
+        db.query(sql, queryParams, async (err, results) => {
           if (err) {
             reject(new Error('Erreur serveur'));
             return;
@@ -126,9 +139,14 @@ const authService = {
           }
 
           const user = results[0];
+          
+          console.log('Debug - User found:', { id: user.id, email: user.email, type: user.type });
+          console.log('Debug - Password check:', { provided: password, hashed: user.pwd });
 
           // Vérification du mot de passe
           const isMatch = await bcrypt.compare(password, user.pwd);
+          console.log('Debug - Password match result:', isMatch);
+          
           if (!isMatch) {
             reject(new Error('Mot de passe incorrect'));
             return;

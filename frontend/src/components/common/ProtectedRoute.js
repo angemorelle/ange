@@ -19,7 +19,9 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   // Vérifier si l'utilisateur a le bon rôle
   if (!user || !allowedRoles.includes(user.type)) {
     // Rediriger vers la page appropriée selon le rôle
-    const redirectPath = user?.type === 'admin' ? '/admin' : '/electeur';
+    const redirectPath = user?.type === 'admin' ? '/admin' : 
+                        user?.type === 'superviseur' ? '/superviseur' : 
+                        '/electeur';
     return <Navigate to={redirectPath} replace />;
   }
 

@@ -114,10 +114,16 @@ export const authService = {
   async verifyToken() {
     try {
       const response = await api.get('/auth/verify');
-      return response.data;
+      return {
+        success: true,
+        user: response.data.user || response.data
+      };
     } catch (error) {
       console.error('Erreur de vérification du token:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
     }
   },
 
@@ -136,20 +142,34 @@ export const electionService = {
   async getElections(params = {}) {
     try {
       const response = await api.get('/elections', { params });
-      return response.data;
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
     } catch (error) {
       console.error('Erreur récupération élections:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
     }
   },
 
   async getElection(id) {
     try {
       const response = await api.get(`/elections/${id}`);
-      return response.data;
+      return {
+        success: true,
+        data: response.data
+      };
     } catch (error) {
       console.error('Erreur récupération élection:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
     }
   },
 
@@ -195,10 +215,17 @@ export const electionService = {
   async getElectionResults(id) {
     try {
       const response = await api.get(`/elections/${id}/resultats`);
-      return response.data;
+      return {
+        success: true,
+        data: response.data
+      };
     } catch (error) {
       console.error('Erreur récupération résultats:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
     }
   }
 };
@@ -208,20 +235,137 @@ export const electeurService = {
   async getDashboard() {
     try {
       const response = await api.get('/electeur/dashboard');
-      return response.data;
+      return {
+        success: true,
+        data: response.data
+      };
     } catch (error) {
       console.error('Erreur récupération dashboard:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
+    }
+  },
+
+  async getElections() {
+    try {
+      const response = await api.get('/elections');
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
+    } catch (error) {
+      console.error('Erreur récupération élections:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async getCandidatures() {
+    try {
+      // Récupérer les candidatures de l'électeur connecté
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      if (!user || !user.id) {
+        console.warn('Utilisateur non connecté ou ID manquant');
+        return {
+          success: true,
+          data: []
+        };
+      }
+      
+      const response = await api.get('/candidats');
+      const allCandidats = Array.isArray(response.data.data) ? response.data.data : [];
+      
+      // Filtrer les candidatures de l'électeur connecté
+      const mesCandidatures = allCandidats.filter(candidat => 
+        candidat.electeur_id === user.id
+      );
+      
+      return {
+        success: true,
+        data: mesCandidatures
+      };
+    } catch (error) {
+      console.error('Erreur récupération candidatures:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async voterElection(electionId) {
+    try {
+      // Simulation de vote - à remplacer par l'endpoint réel
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simule un appel réseau
+      
+      console.log(`Vote simulé pour l'élection ${electionId}`);
+      
+      return {
+        success: true,
+        data: {
+          message: `Vote enregistré pour l'élection ${electionId}`,
+          electionId: electionId,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('Erreur vote élection:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
+    }
+  },
+
+  async postulerCandidat(electionId) {
+    try {
+      // Simulation de candidature - à remplacer par l'endpoint réel
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simule un appel réseau
+      
+      console.log(`Candidature simulée pour l'élection ${electionId}`);
+      
+      return {
+        success: true,
+        data: {
+          message: `Candidature soumise pour l'élection ${electionId}`,
+          electionId: electionId,
+          timestamp: new Date().toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('Erreur candidature élection:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
     }
   },
 
   async getElectionForVoting(electionId) {
     try {
       const response = await api.get(`/electeur/election/${electionId}/voter`);
-      return response.data;
+      return {
+        success: true,
+        data: response.data
+      };
     } catch (error) {
       console.error('Erreur récupération élection pour vote:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
     }
   },
 
@@ -241,34 +385,101 @@ export const electeurService = {
   async getVoteHistory(params = {}) {
     try {
       const response = await api.get('/electeur/historique-votes', { params });
-      return response.data;
+      return {
+        success: true,
+        data: Array.isArray(response.data) ? response.data : []
+      };
     } catch (error) {
       console.error('Erreur récupération historique votes:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
     }
   },
 
   // === GESTION BLOCKCHAIN ===
   async getBlockchainInfo() {
     try {
-      const response = await api.get('/electeur/dashboard/blockchain-info');
+      console.log('🔗 Appel API: /electeur/blockchain-info');
+      const response = await api.get('/electeur/blockchain-info');
+      console.log('🔗 Réponse brute API:', response.data);
+      
+      // Le backend retourne déjà { success: true, data: {...} }
+      // Donc on retourne directement response.data
       return response.data;
     } catch (error) {
-      console.error('Erreur récupération infos blockchain:', error);
-      throw error;
+      console.error('❌ Erreur récupération infos blockchain:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
     }
   },
 
   async generateBlockchainAddress() {
     try {
-      const response = await api.post('/electeur/dashboard/generate-blockchain-address');
+      console.log('🔗 Appel API: /electeur/generate-blockchain-address');
+      const response = await api.post('/electeur/generate-blockchain-address');
+      console.log('🔗 Réponse génération adresse:', response.data);
+      
       if (response.data.success) {
         toast.success('Adresse blockchain générée avec succès');
       }
       return response.data;
     } catch (error) {
-      console.error('Erreur génération adresse blockchain:', error);
+      console.error('❌ Erreur génération adresse blockchain:', error);
       throw error;
+    }
+  },
+
+  // === GESTION DES VOTES ===
+  async submitVote(voteData) {
+    try {
+      const response = await api.post('/vote/submit', voteData);
+      if (response.data.success) {
+        toast.success('Vote enregistré avec succès');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Erreur soumission vote:', error);
+      throw error;
+    }
+  },
+
+  async checkIfVoted(electionId) {
+    try {
+      const response = await api.get(`/vote/check/${electionId}`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Erreur vérification vote:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
+    }
+  },
+
+  async getCandidatesForVoting(electionId) {
+    try {
+      const response = await api.get(`/vote/candidates/${electionId}`);
+      return {
+        success: true,
+        data: Array.isArray(response.data) ? response.data : []
+      };
+    } catch (error) {
+      console.error('Erreur récupération candidats pour vote:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
     }
   }
 };
@@ -317,30 +528,123 @@ export const adminService = {
   async getDepartements() {
     try {
       const response = await api.get('/departements');
-      return response.data;
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
     } catch (error) {
       console.error('Erreur récupération départements:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
     }
   },
 
   async getPostes() {
     try {
       const response = await api.get('/postes');
-      return response.data;
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
     } catch (error) {
       console.error('Erreur récupération postes:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
     }
   },
 
   async getCandidats(params = {}) {
     try {
       const response = await api.get('/candidats', { params });
-      return response.data;
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
     } catch (error) {
       console.error('Erreur récupération candidats:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async getElecteurs(params = {}) {
+    try {
+      const response = await api.get('/electeurs', { params });
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
+    } catch (error) {
+      console.error('Erreur récupération électeurs:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async getElections(params = {}) {
+    try {
+      const response = await api.get('/elections', { params });
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
+    } catch (error) {
+      console.error('Erreur récupération élections:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async addElecteur(electeurData) {
+    try {
+      const response = await api.post('/electeurs', electeurData);
+      if (response.data.message) {
+        toast.success('Électeur ajouté avec succès');
+      }
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Erreur ajout électeur:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  },
+
+  async deleteElecteur(electeurId) {
+    try {
+      const response = await api.delete(`/electeurs/${electeurId}`);
+      if (response.data.message) {
+        toast.success('Électeur supprimé avec succès');
+      }
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Erreur suppression électeur:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
     }
   },
 
@@ -354,6 +658,171 @@ export const adminService = {
     } catch (error) {
       console.error('Erreur mise à jour statut candidat:', error);
       throw error;
+    }
+  },
+
+  async getSuperviseurs(params = {}) {
+    try {
+      const response = await api.get('/superviseurs', { params });
+      return {
+        success: true,
+        data: Array.isArray(response.data.data) ? response.data.data : []
+      };
+    } catch (error) {
+      console.error('Erreur récupération superviseurs:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async addSuperviseur(superviseurData) {
+    try {
+      const response = await api.post('/superviseurs', superviseurData);
+      if (response.data.message) {
+        toast.success('Superviseur ajouté avec succès');
+      }
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Erreur ajout superviseur:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  },
+
+  async deleteSuperviseur(superviseurId) {
+    try {
+      const response = await api.delete(`/superviseurs/${superviseurId}`);
+      if (response.data.message) {
+        toast.success('Superviseur supprimé avec succès');
+      }
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Erreur suppression superviseur:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  },
+
+  async addDepartement(departementData) {
+    try {
+      const response = await api.post('/departements', departementData);
+      if (response.data.message) {
+        toast.success('Département ajouté avec succès');
+      }
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Erreur ajout département:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  },
+
+  async deleteDepartement(departementId) {
+    try {
+      const response = await api.delete(`/departements/${departementId}`);
+      if (response.data.message) {
+        toast.success('Département supprimé avec succès');
+      }
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Erreur suppression département:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message
+      };
+    }
+  }
+};
+
+// Services pour les statistiques
+export const statisticsService = {
+  async getDashboardStats() {
+    try {
+      const response = await api.get('/statistics/dashboard');
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      console.error('Erreur récupération statistiques dashboard:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: null
+      };
+    }
+  },
+
+  async getStatsByPeriod(days = 30) {
+    try {
+      const response = await api.get(`/statistics/dashboard/period/${days}`);
+      return {
+        success: true,
+        data: response.data.data,
+        period: response.data.period
+      };
+    } catch (error) {
+      console.error('Erreur récupération statistiques période:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async getTopDepartements() {
+    try {
+      const response = await api.get('/statistics/departements/top');
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      console.error('Erreur récupération top départements:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
+    }
+  },
+
+  async getCurrentElections() {
+    try {
+      const response = await api.get('/statistics/elections/current');
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      console.error('Erreur récupération élections en cours:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        data: []
+      };
     }
   }
 };

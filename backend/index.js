@@ -65,7 +65,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'root',
+  password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'election_db',
   acquireTimeout: 60000,
   timeout: 60000,
@@ -96,7 +96,7 @@ db.on('error', (err) => {
 });
 
 // Middleware de santé de l'API
-app.use('/api/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -109,23 +109,36 @@ app.use('/api/health', (req, res) => {
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
-// Routes API principales
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/elections', require('./ElectionAdminPanel/routes/elections'));
-app.use('/api/postes', require('./ElectionAdminPanel/routes/postes'));
-app.use('/api/departements', require('./ElectionAdminPanel/routes/departements'));
-app.use('/api/electeurs', require('./ElectionAdminPanel/routes/electeurs'));
-app.use('/api/superviseurs', require('./ElectionAdminPanel/routes/superviseurs'));
-app.use('/api/candidats', require('./ElectionAdminPanel/routes/candidats'));
-app.use('/api/bulletins', require('./ElectionAdminPanel/routes/bulletins'));
-app.use('/api/blockchain', require('./routes/blockchain'));
+// Routes API principales avec gestion d'erreurs
+try {
+  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/elections', require('./ElectionAdminPanel/routes/elections'));
+  app.use('/api/postes', require('./ElectionAdminPanel/routes/postes'));
+  app.use('/api/departements', require('./ElectionAdminPanel/routes/departements'));
+  app.use('/api/electeurs', require('./ElectionAdminPanel/routes/electeurs'));
+  app.use('/api/superviseurs', require('./ElectionAdminPanel/routes/superviseurs'));
+  app.use('/api/candidats', require('./ElectionAdminPanel/routes/candidats'));
+  app.use('/api/bulletins', require('./ElectionAdminPanel/routes/bulletins'));
+  app.use('/api/attributions', require('./ElectionAdminPanel/routes/attributions'));
+  app.use('/api/utilisateurs', require('./ElectionAdminPanel/routes/utilisateurs'));
+  app.use('/api/statistics', require('./ElectionAdminPanel/routes/statistics'));
+  app.use('/api/blockchain', require('./routes/blockchain'));
 
-// Routes spécifiques aux électeurs
-app.use('/api/electeur', require('./ElecteurPanel/routes/dashboard'));
+  // Routes spécifiques aux électeurs
+  app.use('/api/electeur', require('./ElecteurPanel/routes/dashboard'));
+  app.use('/api/vote', require('./ElecteurPanel/routes/vote'));
+  
+  console.log('✅ Routes chargées avec succès');
+} catch (routeError) {
+  console.error('❌ Erreur lors du chargement des routes:', routeError);
+  console.error('Stack trace:', routeError.stack);
+  process.exit(1);
+}
 
 // Middleware de gestion d'erreurs globales
 app.use((err, req, res, next) => {
-  console.error('Erreur:', err);
+  console.error('Erreur globale:', err);
+  console.error('Stack trace:', err.stack);
   
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'JSON invalide' });
@@ -151,7 +164,7 @@ app.use((err, req, res, next) => {
 });
 
 // Route 404
-app.use('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({ 
     error: 'Route non trouvée',
     path: req.originalUrl 
@@ -173,6 +186,19 @@ process.on('SIGINT', () => {
     console.log('Connexion MySQL fermée');
     process.exit(0);
   });
+});
+
+// Gestion des erreurs non capturées
+process.on('uncaughtException', (err) => {
+  console.error('❌ Exception non capturée:', err);
+  console.error('Stack trace:', err.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promesse rejetée non gérée:', reason);
+  console.error('Promise:', promise);
+  process.exit(1);
 });
 
 // Démarrage du serveur
